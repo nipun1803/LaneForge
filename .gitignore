@@ -1,0 +1,13 @@
+# Simulation build outputs
+sim/*.out
+sim/*.vcd
+sim/*.log
+
+# Yosys / synthesis scratch
+*.json
+*.blif
+
+# OS / editor
+.DS_Store
+.vscode/
+*.swp
