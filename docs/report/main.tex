@@ -1,0 +1,447 @@
+% =============================================================================
+%  SIMD Vector Processing Unit - IEEE-format project report (Phase I)
+%  Build:  tectonic main.tex     (or upload main.tex + references.bib to Overleaf)
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,calc}
+
+
+\begin{document}
+
+\title{Design and Verification of a Parameterised\\SIMD Vector Processing Unit in Verilog}
+
+\author{
+\IEEEauthorblockN{Nipun Patlori, Anushka Tyagi, Mohan Kumar C R, Omkar Hadole and Saksham Sharma}
+\IEEEauthorblockA{\textit{Master of Computer Applications, Semester V}}
+}
+
+\maketitle
+
+% -----------------------------------------------------------------------------
+\begin{abstract}
+Data-level parallelism is a major source of performance in modern processors,
+where a single instruction operates on many data elements at once. This paper
+presents the design and verification of a small Single Instruction, Multiple
+Data (SIMD) vector processing unit written in synthesizable Verilog. The unit is
+parameterised by the number of lanes $L$ and the lane width $W$ (default $L=4$,
+$W=8$). It contains eight $L\cdot W$-bit vector registers, $L$ independent lane
+ALUs that share one decoded opcode, a scalar broadcast path, a write-back
+combiner with compare-mask reduction, and a single-cycle top level with
+instruction and data memories and performance counters. A 16-bit instruction set
+provides vector add, subtract, AND, OR, XOR, equality and signed less-than
+compare, logical shifts, multiply, scalar load-immediate and broadcast, and
+vector load/store. Because the scalar baseline is the same RTL built with $L=1$,
+scalar-versus-SIMD comparisons use an identical instruction set, control path
+and clock. Every module is checked by a self-checking testbench against an
+independent reference model; the lane ALU and the instruction decoder are
+verified exhaustively, and the integrated unit is checked against an
+instruction-set reference model. In total 825{,}600 automated checks pass for
+$L=1,4,8$, and mutation testing detects all 23 deliberately injected faults.
+Cycle-count speedup and FPGA resource and frequency measurements are the next
+stage of the work.
+\end{abstract}
+
+\begin{IEEEkeywords}
+SIMD, vector processor, data-level parallelism, Verilog, FPGA, functional verification
+\end{IEEEkeywords}
+% -----------------------------------------------------------------------------
+\section{Introduction}
+Many workloads, including image filtering, signal processing and machine-learning
+kernels, apply the same operation to large arrays of independent data. Flynn's
+taxonomy~\cite{flynn1972} names this execution style \emph{Single Instruction,
+Multiple Data} (SIMD): one instruction stream controls several processing
+elements, each working on its own data element. Compared with issuing one scalar
+instruction per element, SIMD reduces instruction fetch and decode overhead and
+increases throughput roughly in proportion to the number of parallel
+lanes~\cite{hennessy2017}.
+
+This project designs a small SIMD unit to study that trade-off directly in
+hardware. The goals are to
+(i) implement a vector datapath with four (and optionally eight) parallel lanes,
+(ii) verify that every lane computes correctly and independently,
+(iii) compare the same workload on scalar and SIMD configurations by cycle
+count and throughput, and
+(iv) measure the FPGA resource cost and maximum frequency of increasing the
+number of lanes.
+This Phase~I report covers the architecture, the instruction set, module-level
+verification and the integrated, verified top level. Goals (iii) and (iv) are
+completed in Phase~II.
+% -----------------------------------------------------------------------------
+\section{Literature Review}
+
+\subsection{Vector and SIMD architectures}
+Flynn~\cite{flynn1972} classified computer organisations by their instruction
+and data streams, with SIMD as the class in which one control unit drives many
+processing elements. The CRAY-1~\cite{russell1978} made \emph{vector processing}
+commercially successful: long vector registers were streamed through pipelined
+functional units, so a single instruction could process up to 64 elements.
+Hennessy and Patterson~\cite{hennessy2017} describe vector architectures, SIMD
+instruction-set extensions and GPUs as three forms of data-level parallelism,
+and identify lanes, vector registers and memory bandwidth as the main design
+parameters.
+
+\subsection{Packed SIMD extensions in general-purpose processors}
+General-purpose processors adopted \emph{packed} (sub-word) SIMD, in which one
+wide register is split into several narrow lanes. HP's MAX-2~\cite{lee1996} and
+Intel's MMX~\cite{peleg1996} added parallel 8/16/32-bit operations on 64-bit
+registers for multimedia, including saturating arithmetic and parallel compares
+that produce all-ones/all-zeros masks. Streaming SIMD Extensions~\cite{thakkar1999}
+widened this to 128-bit registers with floating-point lanes. ARM's Advanced
+SIMD (Neon)~\cite{armneon} provides comparable packed operations for embedded and
+mobile processors, including vector-by-scalar forms that broadcast one operand to
+all lanes. Our design follows this packed model: a vector is an $L\cdot W$-bit
+word, lane $i$ occupies bits $[iW, iW+W-1]$, and compares produce lane masks in
+the MMX style.
+
+\subsection{Scalable vector ISAs}
+The RISC-V Vector extension~\cite{riscvv2021} separates the instruction set from
+the hardware vector length, so the same binary runs on implementations with
+different numbers of lanes. It also defines vector-scalar (\texttt{.vx}) forms
+and mask registers for predication. Kozyrakis and Patterson~\cite{kozyrakis2003}
+argued that vector processors suit embedded systems because performance scales
+by adding lanes, with modest growth in control complexity and energy. Our
+\texttt{LANES} parameter follows the same idea at the hardware level: the
+instruction set and control unit stay the same while the datapath width
+changes.
+
+\subsection{Vector processors on FPGAs}
+Soft vector processors have been shown to accelerate data-parallel code on FPGAs.
+Yu~\emph{et al.}~\cite{yu2008} attached a parameterised vector coprocessor to a
+soft scalar CPU and reported speedups that grow with the number of lanes.
+VESPA~\cite{yiannacouras2008} showed that the number of lanes, the vector length
+and the memory interface can be tuned to trade FPGA area for performance. Both
+note that speedup falls short of the lane count when scalar code, memory
+accesses or control overhead dominate, as Amdahl's law~\cite{amdahl1967}
+predicts. We will measure this effect with scalar-versus-SIMD workloads on the
+same RTL.
+
+\subsection{Positioning of this work}
+Unlike the FPGA processors above, this project aims to be \emph{clear} rather
+than as fast as possible. It uses a single-cycle datapath (CPI~$=1$), so cycle
+counts can be checked by hand, and builds the scalar baseline from the same RTL,
+so the only variable in the comparison is datapath width. Verification is treated
+as a first-class result, using exhaustive, reference-model and mutation testing.
+The design is written in Verilog~\cite{ieee1364} with SystemVerilog~\cite{ieee1800}
+features used only in the testbenches.
+
+\section{Proposed Solution}
+% -----------------------------------------------------------------------------
+\subsection{Architecture overview}
+Fig.~\ref{fig:block} shows the complete unit. In each clock cycle the
+instruction at the program counter is fetched and decoded by the vector control
+unit. The register file supplies two source vectors. The lane multiplexer
+selects operand~B as either the second vector or the scalar register broadcast
+to all lanes. $L$ lane ALUs then compute in parallel under one shared opcode,
+and the result combiner selects the write-back value from the ALU, the data
+memory or the broadcast scalar. All state is updated on the next rising clock
+edge, so every instruction completes in one cycle (CPI~$=1$). The design is
+parameterised by \texttt{LANES} ($L$) and \texttt{WIDTH} ($W$), which pass down
+through every module; the scalar baseline is the same RTL with $L=1$.
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+    font=\footnotesize,
+    blk/.style={draw, thick, rounded corners=2pt, align=center, minimum height=9mm,
+                fill=white},
+    lane/.style={draw, align=center, minimum width=17mm, minimum height=5mm,
+                 fill=gray!12},
+    dat/.style={-{Latex[length=2mm]}, thick},
+    ctl/.style={-{Latex[length=1.6mm]}, densely dashed, gray!60!black},
+    lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}
+]
+% ---- top row: fetch and decode ----
+\node[blk, minimum width=20mm] (pc)   at (0,0)    {PC, HALT\\counters};
+\node[blk, minimum width=22mm] (imem) at (3.2,0)  {Instruction\\memory $256{\times}16$};
+\node[blk, minimum width=30mm] (ctrl) at (7.6,0)  {\textbf{Vector Control Unit}\\(decoder)};
+
+% ---- datapath row ----
+\node[blk, minimum width=26mm, minimum height=16mm] (rf) at (1.2,-3.0)
+      {\textbf{Vector Register File}\\$8 \times L{\cdot}W$, 2R / 1W\\+ scalar register};
+\node[blk, minimum width=16mm] (mux) at (4.7,-3.65) {\textbf{Lane MUX}\\vs2 / bcast};
+
+\node[lane] (l0) at (8.1,-2.35) {Lane ALU 0};
+\node[lane, below=1mm of l0] (l1) {Lane ALU 1};
+\node[below=0mm of l1, inner sep=1pt] (ld) {$\vdots$};
+\node[lane, below=0mm of ld] (l3) {Lane ALU $L{-}1$};
+\node[draw, thick, rounded corners=2pt, fit=(l0)(l3), inner sep=2mm,
+      label={[font=\scriptsize, anchor=south east]north east:\textbf{Vector ALU}}] (valu) {};
+
+\node[blk, minimum width=22mm, minimum height=14mm] (rc) at (11.5,-3.0)
+      {\textbf{Result}\\\textbf{Combiner}\\WB select, mask};
+\node[blk, minimum width=20mm, minimum height=14mm] (dmem) at (15.0,-3.0)
+      {Data memory\\$512 \times L{\cdot}W$};
+
+% ---- data paths ----
+\coordinate (vs1a) at ($(rf.east)+(0,0.45)$);
+\coordinate (vs2a) at ($(rf.east)+(0,-0.65)$);
+\coordinate (bcA)  at ($(rc.south)+(-0.55,0)$);
+\coordinate (wbA)  at ($(rc.south)+(0.55,0)$);
+\coordinate (wbB)  at ($(rf.south)+(0.5,0)$);
+\coordinate (stA)  at ($(rf.south)+(-0.6,0)$);
+\draw[dat] (pc) -- node[lbl, above]{pc} (imem);
+\draw[dat] (imem) -- node[lbl, above]{instr} (ctrl);
+\draw[dat] (vs1a) -- node[lbl, above, pos=0.78]{vs1} (vs1a -| valu.west);
+\draw[dat] (vs2a) -- node[lbl, above]{vs2, scalar} (vs2a -| mux.west);
+\draw[dat] (mux.east) -- node[lbl, above]{vb} (mux.east -| valu.west);
+\draw[dat] (valu.east |- rc.west) -- node[lbl, above]{vy, mask} (rc.west);
+\draw[dat] (dmem.west) -- node[lbl, above]{rdata} node[lbl, below]{(VLD)} (rc.east);
+% broadcast scalar to the combiner (VBCAST)
+\draw[dat] (mux.south) -- (mux.south |- 0,-4.75) -- node[lbl, above, pos=0.45]{bcast (VBCAST)}
+           (bcA |- 0,-4.75) -- (bcA);
+% write-back to the register file
+\draw[dat] (wbA) -- (wbA |- 0,-5.35) -- node[lbl, below, pos=0.5]{wb\_data (write-back)}
+           (wbB |- 0,-5.35) -- (wbB);
+% store data from read port 2 to memory (VST)
+\draw[dat] (stA) -- (stA |- 0,-5.95) -- node[lbl, below, pos=0.5]{store data from read port 2 (VST)}
+           (dmem.south |- 0,-5.95) -- (dmem.south);
+
+% ---- control signals ----
+\draw[ctl] ($(ctrl.south)+(-1.3,0)$) -- ++(0,-0.75) -| node[lbl, pos=0.75, right]{raddr, waddr, we}
+           (rf.north);
+\draw[ctl] ($(ctrl.south)+(-0.75,0)$) -- ++(0,-1.25) -| node[lbl, pos=0.75, left]{sel\_scalar}
+           (mux.north);
+\draw[ctl] ($(ctrl.south)+(-0.25,0)$) -- node[lbl, pos=0.8, right]{alu\_op (shared by all lanes)}
+           ($(ctrl.south)+(-0.25,0)$ |- valu.north);
+\draw[ctl] ($(ctrl.south)+(1.3,0)$) -- ++(0,-0.75) -| node[lbl, pos=0.75, right]{wb\_sel}
+           (rc.north);
+\draw[ctl] (ctrl.east) -| node[lbl, pos=0.75, right]{mem\_we, addr} (dmem.north);
+\end{tikzpicture}
+\caption{Datapath of the SIMD vector unit. Solid arrows carry data, dashed arrows
+carry control. The only signal shared by all lanes is the decoded opcode
+(\texttt{alu\_op}).}
+\label{fig:block}
+\end{figure*}
+
+\subsection{Top-level integration}
+The module \texttt{simd\_top} connects the blocks of Fig.~\ref{fig:block} with
+a 256-entry instruction memory, a 512-entry data memory in which one word holds
+one full vector, an 8-bit program counter and a mask status register.
+Three design choices make the top level robust and measurable:
+\begin{itemize}
+\item \textbf{Single point of write gating.} The decoder's register, scalar,
+      memory and mask write enables are ANDed with $\overline{\text{halted}}$ in
+      one place, so no architectural state can change after \texttt{HALT}.
+      The PC does not advance on \texttt{HALT}, so it records where execution
+      stopped. The instruction memory is pre-filled with \texttt{HALT}, so a
+      program that omits its final \texttt{HALT} still terminates.
+\item \textbf{Performance counters.} \texttt{cycle\_count} and
+      \texttt{instr\_count} count executed cycles and instructions (equal, since
+      CPI~$=1$), and \texttt{lane\_ops} adds $L$ for every vector ALU
+      instruction. Throughput in element operations per cycle is therefore
+      \texttt{lane\_ops}/\texttt{cycle\_count}.
+\item \textbf{Debug read port.} An asynchronous read port on the data memory lets
+      the testbench check results through the design's own interface. It also
+      gives synthesis an observable path from the datapath to an output; without
+      it, every result would end in a memory that nothing reads and the tools
+      would remove the whole datapath.
+\end{itemize}
+% -----------------------------------------------------------------------------
+\subsection{Instruction set}
+Instructions are 16 bits wide in three formats (Table~\ref{tab:fmt}). R-type
+instructions include an $s$ bit that replaces \texttt{vs2} with the broadcast
+scalar, so an operation such as ``add $k$ to every element'' needs only one
+instruction, as in the vector-scalar forms of Neon and RISC-V~V. Table~\ref{tab:isa}
+lists the opcodes; all sixteen 4-bit codes are used. All opcodes, field
+positions and sizes are defined once in a shared header, \texttt{simd\_defs.vh},
+which is itself checked by a testbench for unique opcodes and non-overlapping
+fields.
+
+\begin{table}[t]
+\centering
+\caption{Instruction formats}
+\label{tab:fmt}
+\footnotesize
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+ & [15:12] & [11:9] & [8:6] & [5:3] & [2] \\
+\midrule
+R-type & opcode & vd   & vs1 & vs2 & $s$ \\
+M-type & opcode & vreg & \multicolumn{3}{c}{addr[8:0]} \\
+S-type & opcode & --   & \multicolumn{3}{c}{imm8[7:0]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Instruction set (per lane $i$; $B = s\,?\,\text{scalar} : \text{vs2}$)}
+\label{tab:isa}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Opcode & Mnemonic & Operation \\
+\midrule
+0001/0010 & VADD/VSUB & $vd_i = vs1_i \pm B_i$ (mod $2^W$) \\
+0011--0101 & VAND/VOR/VXOR & $vd_i = vs1_i \circ B_i$ (bitwise) \\
+0110 & VCMPEQ & $vd_i = (vs1_i = B_i)$ ? all-ones : 0 \\
+0111 & VCMPLT & signed $vs1_i < B_i$ ? all-ones : 0 \\
+1000/1001 & VSLL/VSRL & $vs1_i \ll / \gg B_i[\log_2 W-1:0]$ \\
+1010 & VMUL & low $W$ bits of $vs1_i \times B_i$ \\
+1011 & SLI & scalar $=$ imm8 (zero-extended) \\
+1100/1101 & VLD/VST & vreg $\leftrightarrow$ DMEM[addr] \\
+1110 & VBCAST & $vd_i =$ scalar \\
+0000/1111 & NOP/HALT & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Vector control unit and result combiner}
+\paragraph{Vector control unit} A purely combinational decoder that produces the
+ALU opcode, register addresses, write enables, write-back select and the
+\texttt{halt} and \texttt{mask\_we} flags. Register addresses are taken straight
+from the instruction fields; only the enables depend on the opcode. For
+\texttt{VST} the second read port is redirected to the store register, so store
+data always leaves the register file through port~2. Every instruction performs
+at most one architectural write.
+
+\paragraph{Result combiner} Selects the write-back value from the ALU, the data
+memory (\texttt{VLD}) or the broadcast scalar (\texttt{VBCAST}); the reserved
+select code writes zero rather than an unknown value. It also reduces the
+per-lane compare mask to \emph{any}, \emph{all} and population-count outputs,
+the hardware counterparts of mask-test instructions in commercial SIMD
+extensions.
+% -----------------------------------------------------------------------------
+\subsection{Lane ALU and vector ALU}
+\paragraph{Lane ALU} A combinational $W$-bit ALU implementing the ten vector
+operations. Every path assigns default outputs first, so no latches are
+inferred, and non-ALU opcodes produce zero. Arithmetic wraps modulo $2^W$.
+\texttt{VCMPLT} uses a signed (two's-complement) comparison, so
+\texttt{0xFF}~($-1$) is less than \texttt{0x01}. The shift amount is the low
+$\log_2 W$ bits of operand~B, as in x86 and RISC-V, which is why $W$ must be a
+power of two. Compares drive a \texttt{flag} output and write all-ones or
+all-zeros to the lane, so the result can be used directly as a bit mask.
+
+\paragraph{Vector ALU} A \texttt{generate} loop creates $L$ lane ALUs, each
+connected to its own $W$-bit slice $[iW, iW+W-1]$ of the operands and the
+result. The opcode is the only signal shared between lanes, so carries,
+borrows and shifted bits never cross a lane boundary. This is the property that
+separates a SIMD datapath from a single wide ALU: one $32$-bit adder computes
+$\texttt{0xFFFFFFFF} + \texttt{0x01010101} = \texttt{0x01010100}$, whereas four
+8-bit lanes correctly produce \texttt{0x00000000}. Each lane's compare flag forms
+bit $i$ of the lane mask.
+% -----------------------------------------------------------------------------
+\subsection{Vector register file and lane multiplexer}
+\paragraph{Vector register file} Eight $L\cdot W$-bit registers with two
+combinational read ports and one write port that updates on the rising clock
+edge, plus a $W$-bit scalar register with its own write port. A read during a
+write returns the old value until the clock edge. This is the correct behaviour
+for a single-cycle datapath: \texttt{VADD v1,v1,v2} reads the old \texttt{v1}
+and its result replaces \texttt{v1} at the end of the cycle, so no forwarding
+logic is needed. A synchronous reset clears every register. The register file
+is the largest flip-flop cost in the core and grows linearly with $L$
+($8 \times 32 = 256$ flip-flops at $L=4$).
+
+\paragraph{Lane multiplexer} Selects operand~B as \texttt{vs2} or
+$\{L\{\text{scalar}\}\}$. The broadcast itself is only wiring, since every lane's
+input is connected to the same $W$ scalar bits; the hardware cost is one 2:1
+multiplexer per bit. The replicated scalar is also exported so that
+\texttt{VBCAST} reuses it through the result combiner.
+% -----------------------------------------------------------------------------
+\subsection{Verification methodology}
+Each module has a self-checking testbench that compares the design under test
+with an independent reference model. The ALU reference uses integer modulo
+arithmetic and an explicit two's-complement conversion instead of Verilog
+truncation, so it cannot share the RTL's mistakes. Where the input space is
+small, testing is exhaustive: all $2^{16}$ operand pairs for each of the ten
+lane-ALU operations, and all $2^{16}$ instruction words for the decoder.
+Elsewhere, directed edge cases are combined with thousands of random vectors.
+The integrated unit is tested with programs whose \emph{entire} final
+architectural state (all 512 memory words, all registers, the scalar, the mask,
+the PC and every counter) is compared with an instruction-set reference model
+that executes the same program. Faults were deliberately injected into the RTL
+to show that each test catches the class of bug it targets.
+Table~\ref{tab:ver} summarises the results.
+
+\begin{table}[t]
+\centering
+\caption{Verification results ($L=4$, $W=8$)}
+\label{tab:ver}
+\footnotesize
+\begin{tabular}{@{}llr@{}}
+\toprule
+Module & Method & Checks \\
+\midrule
+Lane ALU        & exhaustive $\times$ 10 ops      & 656{,}650 \\
+Vector ALU      & isolation, walking lane, masks  & 51{,}277 \\
+Register file   & shadow model, read-during-write & 15{,}248 \\
+Lane MUX        & all 256 scalars broadcast       & 12{,}772 \\
+Result combiner & distinct sources, all masks     & 19{,}216 \\
+Control unit    & all 65{,}536 instructions       & 65{,}536 \\
+Top level       & 9 programs vs.\ ISA model       & 4{,}752 \\
+\midrule
+\multicolumn{2}{@{}l}{Total (incl.\ spec and smoke tests), all pass} & 825{,}600 \\
+\multicolumn{2}{@{}l}{Injected faults detected} & 23 / 23 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The full suite also passes for $L=1$, $L=8$ and $W=16$, which confirms that the
+parameterisation is correct. The top-level programs confirm CPI~$=1$: for
+example, \texttt{VLD, VLD, VADD, VST, HALT} completes in exactly five cycles
+with $L=4$ element operations, and an all-operations program of 44
+instructions completes in 44 cycles with 80 element operations.
+
+\subsection{Implementation status and planned evaluation}
+The complete unit synthesises with Yosys. In generic logic cells at $L=4$, each
+lane ALU costs 436 cells, the register file 996, the result combiner 175, the
+lane multiplexer 32 and the decoder 25, so the SIMD core is about 3k cells. The
+total of about 74k cells is dominated by the data memory, which generic
+synthesis builds from flip-flops; on an FPGA it maps to block or distributed
+RAM, so memory and core will be reported separately.
+
+Phase~II runs three workloads on $L=1,4,8$: array addition, threshold counting
+with scalar broadcast, and bitwise masking. With CPI~$=1$, the speedup is
+\begin{equation}
+S(L) = \frac{\text{cycles}(L=1)}{\text{cycles}(L)} \le L ,
+\end{equation}
+and throughput is reported in element operations per cycle. FPGA resource use
+(LUTs, FFs, DSPs) and maximum frequency will be measured for each lane count to
+quantify the area cost of parallelism.
+
+% -----------------------------------------------------------------------------
+\section{Individual Contributions}
+The work is divided equally: each member owns one part of the hardware with its
+testbenches, writes the corresponding report section(s), and leads one of the
+remaining Phase~II tasks. Ownership is reflected file by file in the project's
+Git history.
+
+\begin{itemize}
+\item \textbf{Nipun Patlori} -- top-level integration (\texttt{simd\_top}:
+      instruction and data memories, program counter, \texttt{HALT} handling,
+      performance counters, debug port) and its instruction-set reference-model
+      testbench; repository maintenance, README and architecture documentation;
+      report section on architecture and integration.
+      \emph{Phase~II:} random-program verification.
+\item \textbf{Anushka Tyagi} -- lane ALU and vector ALU RTL, the shared ALU
+      reference model, the exhaustive lane-ALU testbench and the lane-isolation
+      testbench; abstract and the ALU report section.
+      \emph{Phase~II:} 8-lane scaling study.
+\item \textbf{Mohan Kumar C R} -- vector register file and lane multiplexer RTL
+      and testbenches (read-during-write, port independence, broadcast);
+      literature review and the storage report section.
+      \emph{Phase~II:} FPGA resource utilisation and maximum frequency.
+\item \textbf{Omkar Hadole} -- instruction-set specification
+      (\texttt{simd\_defs.vh}), vector control unit and result combiner RTL, the
+      exhaustive decoder testbench and the result-combiner testbench; ISA
+      documentation and report section.
+      \emph{Phase~II:} assembler.
+\item \textbf{Saksham Sharma} -- build and simulation infrastructure (Makefile,
+      pass/fail reporting, parameter sweeps), synthesis flow, verification and
+      development-log documentation; introduction, verification section,
+      references and report assembly.
+      \emph{Phase~II:} scalar-versus-SIMD benchmarks.
+\end{itemize}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
