@@ -1,0 +1,153 @@
+# LaneForge SIMD - Phase I test evidence
+# Generated 2026-11-14 with Icarus Verilog version 13.0 (stable) (v13_0)
+# Commands: make all_tests  (LANES=4, WIDTH=8)  and  make demo
+
+=== Running tb_defs (LANES=4, WIDTH=8) ===
+ALL PASS
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+=== Running tb_lane_alu (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_lane_alu_L4_W8.vcd opened for output.
+
+  opcode   checks     fails   (WIDTH=8, exhaustive)
+  -------  ---------  ------
+  NOP            200       0        ok
+  VADD         65545       0        ok
+  VSUB         65545       0        ok
+  VAND         65545       0        ok
+  VOR          65545       0        ok
+  VXOR         65545       0        ok
+  VCMPEQ       65545       0        ok
+  VCMPLT       65545       0        ok
+  VSLL         65545       0        ok
+  VSRL         65545       0        ok
+  VMUL         65545       0        ok
+  SLI            200       0        ok
+  VLD            200       0        ok
+  VST            200       0        ok
+  VBCAST         200       0        ok
+  HALT           200       0        ok
+
+ALL PASS
+tb/tb_lane_alu.v:121: $finish called at 656650000 (1ps)
+=== Running tb_lane_mux (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_lane_mux_L4_W8.vcd opened for output.
+
+  lane_mux  LANES=4  WIDTH=8
+  A pass         5002 checks
+  B bcast         768 checks
+  C bcast-out    2000 checks
+  D lanes           2 checks
+  E toggle       5000 checks
+
+ALL PASS
+tb/tb_lane_mux.v:119: $finish called at 12772000 (1ps)
+=== Running tb_result_combiner (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_result_combiner_L4_W8.vcd opened for output.
+
+  result_combiner  LANES=4  WIDTH=8
+  A select      15000 checks
+  B reserved      200 checks
+  C mask           16 checks
+  D isolation    4000 checks
+  wb_sel coverage: ALU=5529 MEM=5508 BCAST=5480 RSVD=683
+
+ALL PASS
+tb/tb_result_combiner.v:154: $finish called at 19216000 (1ps)
+=== Running tb_simd_top (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_simd_top_L4_W8.vcd opened for output.
+
+  simd_top  LANES=4  WIDTH=8
+  program    instrs   cycles   lane-ops
+  P1 basic      5 instr     5 cycles      4 lane-ops        ok
+  P2 all-ops   44 instr    44 cycles     80 lane-ops        ok
+  P3 scalar    10 instr    10 cycles      8 lane-ops        ok
+  P4 hazards   14 instr    14 cycles     32 lane-ops        ok
+  P5 mask       9 instr     9 cycles     16 lane-ops        ok
+  P6 no-halt    3 instr     4 cycles      4 lane-ops        ok
+  P7 freeze    44 instr    44 cycles     80 lane-ops        ok
+  P7 +50cyc    44 instr    44 cycles     80 lane-ops        ok
+  P8 reset     44 instr    44 cycles     80 lane-ops        ok
+  total checks: 4752
+
+ALL PASS
+tb/tb_simd_top.v:330: $finish called at 2957200 (1ps)
+=== Running tb_smoke (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_smoke_L4_W8.vcd opened for output.
+LANES=4 WIDTH=8 vector=03020100
+ALL PASS
+tb/tb_smoke.v:39: $finish called at 5000 (1ps)
+=== Running tb_vector_alu (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_vector_alu_L4_W8.vcd opened for output.
+
+  vector_alu  LANES=4  WIDTH=8  (32-bit vectors)
+  opcode   checks  fails
+  -------  ------  -----
+  NOP         200      0        ok
+  VADD       5005      0        ok
+  VSUB       5005      0        ok
+  VAND       5004      0        ok
+  VOR        5004      0        ok
+  VXOR       5004      0        ok
+  VCMPEQ     5020      0        ok
+  VCMPLT     5020      0        ok
+  VSLL       5005      0        ok
+  VSRL       5005      0        ok
+  VMUL       5005      0        ok
+  SLI         200      0        ok
+  VLD         200      0        ok
+  VST         200      0        ok
+  VBCAST      200      0        ok
+  HALT        200      0        ok
+  mask coverage (lane: seen 0/1): L0:ok L1:ok L2:ok L3:ok 
+
+ALL PASS
+tb/tb_vector_alu.v:165: $finish called at 51277000 (1ps)
+=== Running tb_vector_control (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_vector_control_L4_W8.vcd opened for output.
+
+  vector_control  (exhaustive: all 65536 instruction words)
+  opcode   decoded  fails
+  -------  -------  -----
+  NOP         4096      0        ok
+  VADD        4096      0        ok
+  VSUB        4096      0        ok
+  VAND        4096      0        ok
+  VOR         4096      0        ok
+  VXOR        4096      0        ok
+  VCMPEQ      4096      0        ok
+  VCMPLT      4096      0        ok
+  VSLL        4096      0        ok
+  VSRL        4096      0        ok
+  VMUL        4096      0        ok
+  SLI         4096      0        ok
+  VLD         4096      0        ok
+  VST         4096      0        ok
+  VBCAST      4096      0        ok
+  HALT        4096      0        ok
+
+ALL PASS
+tb/tb_vector_control.v:155: $finish called at 65552000 (1ps)
+=== Running tb_vector_regfile (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_vector_regfile_L4_W8.vcd opened for output.
+
+  vector_regfile  LANES=4  WIDTH=8  (8 x 32-bit + 8-bit scalar)
+  A reset          17 checks
+  B readback       16 checks
+  C ports         128 checks
+  D rdw            32 checks
+  E we=0           17 checks
+  F isolate        21 checks
+  G random      15000 checks
+  H reset          17 checks
+  total         15248 checks, 0 errors
+
+ALL PASS
+tb/tb_vector_regfile.v:203: $finish called at 100908000 (1ps)
+=== ALL TESTBENCHES COMPLETED ===
+
+=== make demo ===
+--- example programs (LANES=4, WIDTH=8) ---
+add        result=14131211 (expected 14131211)  cycles=5  lane_ops=4  mask=0000        OK
+add_const  result=2d190f06 (expected 2d190f06)  cycles=5  lane_ops=4  mask=0000        OK
+threshold  result=00010003 (expected 00010003)  cycles=6  lane_ops=8  mask=0101        OK
+ALL PASS

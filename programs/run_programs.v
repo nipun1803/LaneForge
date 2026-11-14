@@ -51,6 +51,15 @@ module run_programs;
         end
     endtask
 
+    // Optional waveform of the vector-add program: +vcd=<file>
+    // (make demo writes sim/run_programs.vcd; scripts/vcd_to_tikz.py draws Fig. 6)
+    reg [8*128-1:0] vcd_file;
+    initial
+        if ($value$plusargs("vcd=%s", vcd_file)) begin
+            $dumpfile(vcd_file);
+            $dumpvars(0, u_add);
+        end
+
     initial begin
         @(negedge clk); rst = 0;
         wait (halted_add && halted_add_const && halted_threshold);

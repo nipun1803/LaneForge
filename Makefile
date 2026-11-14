@@ -75,7 +75,8 @@ all_tests:
 demo: | $(SIM_DIR)
 	$(IVERILOG) $(IVFLAGS) -s run_programs -o $(SIM_DIR)/run_programs.out \
 	    $(RTL_SRCS) programs/run_programs.v
-	@$(VVP) -n $(SIM_DIR)/run_programs.out | grep -v "Not enough words" \
+	@$(VVP) -n $(SIM_DIR)/run_programs.out +vcd=$(SIM_DIR)/run_programs.vcd \
+	    | grep -v "Not enough words" \
 	    | tee $(SIM_DIR)/run_programs.log
 	@grep -q "^ALL PASS" $(SIM_DIR)/run_programs.log
 
