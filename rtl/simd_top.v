@@ -10,15 +10,17 @@
 //    write   regfile, scalar, data memory, mask status on the rising edge
 //
 //  Memories (inside the top, preloaded by the testbench):
-//    IMEM  `IMEM_DEPTH x 16          initialised to HALT, so running off the end of
-//                                    a program stops cleanly instead of looping
+//    IMEM  `IMEM_DEPTH x 16          initialised to HALT; a short program stops
+//                                    when it reaches an untouched slot. A full
+//                                    image without HALT wraps the PC and repeats.
 //    DMEM  `DMEM_DEPTH x LANES*WIDTH  one word = one full vector
 //                                    combinational read, synchronous write
 //
 //  HALT: when the HALT instruction executes, 'halted' is set at the clock edge
 //  and the PC stays pointing AT the HALT (so pc_out shows where it stopped).
 //  From then on the PC, every counter and ALL architectural writes are frozen
-//  (the decoder's write enables are gated with !halted here, in one place).
+//  (the decoder's write enables are gated with !halted && !rst in one place).
+//  Reset clears registers/status/counters and preserves both memories.
 //
 //  Counters (for the scalar-vs-SIMD study):
 //    cycle_count : clock cycles spent executing, including the HALT itself
@@ -27,8 +29,10 @@
 //                  (+LANES per VADD..VMUL) -> throughput = lane_ops / cycle_count
 //
 //  Debug port: dbg_addr / dbg_rdata read DMEM asynchronously. Testbenches use it
-//  to check results, and it keeps synthesis from optimising the datapath away
-//  (results would otherwise have no path to an output).
+//  to check results; synthesis uses it to observe stored datapath results.
+//  EXTERNAL_INSTR optionally takes instructions from instr_in instead of IMEM.
+//  The synthesis wrapper enables this mode so a default HALT-only ROM does not
+//  make the datapath constant. Normal program execution keeps the default mode.
 // =============================================================================
 `timescale 1ns/1ps
 `include "simd_defs.vh"
@@ -37,7 +41,8 @@ module simd_top #(
     parameter LANES     = 4,
     parameter WIDTH     = 8,
     parameter IMEM_INIT = "",          // optional $readmemh file for IMEM
-    parameter DMEM_INIT = ""           // optional $readmemh file for DMEM
+    parameter DMEM_INIT = "",          // optional $readmemh file for DMEM
+    parameter EXTERNAL_INSTR = 0       // 0: IMEM[pc], 1: instr_in
 )(
     input  wire                     clk,
     input  wire                     rst,           // synchronous, active-high
@@ -52,7 +57,10 @@ module simd_top #(
 
     // Debug read port into data memory
     input  wire [`DMEM_AW-1:0]      dbg_addr,
-    output wire [LANES*WIDTH-1:0]   dbg_rdata
+    output wire [LANES*WIDTH-1:0]   dbg_rdata,
+
+    // Optional external instruction source; tie to zero in the default mode
+    input  wire [`INSTR_W-1:0]     instr_in
 );
     localparam VW = LANES * WIDTH;
 
@@ -71,7 +79,7 @@ module simd_top #(
         if (DMEM_INIT != "") $readmemh(DMEM_INIT, dmem);
     end
 
-    wire [`INSTR_W-1:0] instr = imem[pc];
+    wire [`INSTR_W-1:0] instr = EXTERNAL_INSTR ? instr_in : imem[pc];
     assign pc_out = pc;
 
     // =========================================================================
@@ -95,8 +103,9 @@ module simd_top #(
         .mask_we(mask_we), .halt(halt)
     );
 
-    // Global write gating: nothing architectural changes once halted
-    wire run       = ~halted;
+    // Block instruction writes during reset and after HALT. Reset state updates
+    // remain in the synchronous reset branches; memories retain their contents.
+    wire run       = ~halted & ~rst;
     wire rf_we_g   = rf_we   & run;
     wire s_we_g    = s_we    & run;
     wire mem_we_g  = mem_we  & run;

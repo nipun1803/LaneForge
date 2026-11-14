@@ -2,6 +2,7 @@
 sim/*.out
 sim/*.vcd
 sim/*.log
+sim/*.stat
 
 # Yosys / synthesis scratch
 *.json
@@ -11,3 +12,6 @@ sim/*.log
 .DS_Store
 .vscode/
 *.swp
+
+# Python verification runner cache
+__pycache__/

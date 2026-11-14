@@ -14,6 +14,7 @@
 IVERILOG := iverilog
 VVP      := vvp
 YOSYS    := yosys
+PYTHON   ?= python3
 
 # Design parameters (passed to the testbench top as -P overrides)
 LANES ?= 4
@@ -23,6 +24,7 @@ RTL_DIR  := rtl
 TB_DIR   := tb
 SIM_DIR  := sim
 RES_DIR  := results
+SYNTH_DIR := synthesis
 
 RTL_SRCS := $(wildcard $(RTL_DIR)/*.v)
 TB_SRCS  := $(wildcard $(TB_DIR)/tb_*.v)
@@ -33,13 +35,13 @@ TESTS    := $(patsubst $(TB_DIR)/tb_%.v,%,$(TB_SRCS))
 # -I     : `include search path - rtl/ for simd_defs.vh, tb/ for ref_alu.vh
 IVFLAGS  := -g2012 -Wall -I $(RTL_DIR) -I $(TB_DIR)
 
-.PHONY: all_tests clean synth help demo
+.PHONY: all_tests clean synth help demo verify_matrix mutation_tests
 
 # Keep compiled sims (otherwise make deletes them as intermediates)
 .SECONDARY:
 
 help:
-	@echo "Targets: test_<name> | all_tests | wave_<name> | demo | synth | clean"
+	@echo "Targets: test_<name> | all_tests | verify_matrix | mutation_tests | wave_<name> | demo | synth | clean"
 	@echo "Tests found: $(TESTS)"
 
 # --- Simulation ---------------------------------------------------------------
@@ -71,6 +73,13 @@ all_tests:
 	done
 	@echo "=== ALL TESTBENCHES COMPLETED ==="
 
+# Complete configuration logs and isolated RTL mutation / coverage probes.
+verify_matrix:
+	$(PYTHON) scripts/verify_evidence.py matrix --iverilog "$(IVERILOG)" --vvp "$(VVP)"
+
+mutation_tests:
+	$(PYTHON) scripts/verify_evidence.py mutations --iverilog "$(IVERILOG)" --vvp "$(VVP)"
+
 # --- Example programs (programs/*.hex, loaded via IMEM_INIT / DMEM_INIT) -------
 demo: | $(SIM_DIR)
 	$(IVERILOG) $(IVFLAGS) -s run_programs -o $(SIM_DIR)/run_programs.out \
@@ -80,19 +89,35 @@ demo: | $(SIM_DIR)
 	    | tee $(SIM_DIR)/run_programs.log
 	@grep -q "^ALL PASS" $(SIM_DIR)/run_programs.log
 
-# --- Synthesis (generic cells, resource estimate) -----------------------------
-synth: | $(RES_DIR)
-	$(YOSYS) -q -p "read_verilog -sv -I$(RTL_DIR) $(RTL_SRCS); \
-	    chparam -set LANES $(LANES) -set WIDTH $(WIDTH) simd_top; \
-	    synth -top simd_top; \
-	    tee -o $(RES_DIR)/synth_L$(LANES)_W$(WIDTH).txt stat"
-	@echo "Generic cells, whole design and per module (LANES=$(LANES), WIDTH=$(WIDTH)):"
-	@grep -A8 "design hierarchy" $(RES_DIR)/synth_L$(LANES)_W$(WIDTH).txt | grep -E "^ +[0-9]+ "
-	@echo "Full report: $(RES_DIR)/synth_L$(LANES)_W$(WIDTH).txt"
+# --- Synthesis (generic cells; external instructions, instruction ROM excluded)
+SYNTH_TOP := simd_synth_top
+SYNTH_SRC := $(SYNTH_DIR)/$(SYNTH_TOP).v
+SYNTH_STAT := $(SIM_DIR)/synth_$(CFG).stat
+SYNTH_REPORT := $(RES_DIR)/synth_$(CFG).txt
+SYNTH_CMD := read_verilog -sv -I$(RTL_DIR) $(RTL_SRCS) $(SYNTH_SRC); chparam -set LANES $(LANES) -set WIDTH $(WIDTH) $(SYNTH_TOP); synth -top $(SYNTH_TOP); tee -o $(SYNTH_STAT) stat
+
+synth: | $(SIM_DIR) $(RES_DIR)
+	$(YOSYS) -q -p "$(SYNTH_CMD)"
+	@{ \
+	    printf '# LaneForge generic synthesis evidence\n'; \
+	    printf '# Generated (UTC): '; date -u '+%Y-%m-%dT%H:%M:%SZ'; \
+	    printf '# Tool: '; $(YOSYS) -V; \
+	    printf '# Parameters: LANES=$(LANES), WIDTH=$(WIDTH), EXTERNAL_INSTR=1\n'; \
+	    printf '# Scope: datapath, data memory, PC, counters; instruction ROM excluded\n'; \
+	    printf '# Reproduce: make synth LANES=$(LANES) WIDTH=$(WIDTH)\n'; \
+	    printf '# Yosys command: $(YOSYS) -q -p "%s"\n' '$(SYNTH_CMD)'; \
+	    printf '# Source SHA-256 hashes:\n'; \
+	    shasum -a 256 $(RTL_SRCS) $(RTL_DIR)/simd_defs.vh $(SYNTH_SRC); \
+	    printf '\n'; sed 's/[[:space:]]*$$//' $(SYNTH_STAT); \
+	} > $(SYNTH_REPORT).tmp
+	@mv $(SYNTH_REPORT).tmp $(SYNTH_REPORT)
+	@echo "Generic cell hierarchy (LANES=$(LANES), WIDTH=$(WIDTH), instruction ROM excluded):"
+	@sed -n '/=== design hierarchy ===/,$$p' $(SYNTH_REPORT)
+	@echo "Full report with reproduction details: $(SYNTH_REPORT)"
 
 # --- Housekeeping -------------------------------------------------------------
 $(SIM_DIR) $(RES_DIR):
 	mkdir -p $@
 
 clean:
-	rm -f $(SIM_DIR)/*.out $(SIM_DIR)/*.vcd $(SIM_DIR)/*.log
+	rm -f $(SIM_DIR)/*.out $(SIM_DIR)/*.vcd $(SIM_DIR)/*.log $(SIM_DIR)/*.stat
