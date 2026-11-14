@@ -6,6 +6,7 @@
 #    make test_<name> LANES=8    same, overriding the testbench LANES parameter
 #    make all_tests              run every tb/tb_*.v
 #    make wave_<name>            run test, then print the VCD path to open
+#    make demo                   run the example programs in programs/
 #    make synth LANES=4          Yosys generic synthesis + cell statistics
 #    make clean                  remove build outputs
 # =============================================================================
@@ -32,13 +33,13 @@ TESTS    := $(patsubst $(TB_DIR)/tb_%.v,%,$(TB_SRCS))
 # -I     : `include search path - rtl/ for simd_defs.vh, tb/ for ref_alu.vh
 IVFLAGS  := -g2012 -Wall -I $(RTL_DIR) -I $(TB_DIR)
 
-.PHONY: all_tests clean synth help
+.PHONY: all_tests clean synth help demo
 
 # Keep compiled sims (otherwise make deletes them as intermediates)
 .SECONDARY:
 
 help:
-	@echo "Targets: test_<name> | all_tests | wave_<name> | synth | clean"
+	@echo "Targets: test_<name> | all_tests | wave_<name> | demo | synth | clean"
 	@echo "Tests found: $(TESTS)"
 
 # --- Simulation ---------------------------------------------------------------
@@ -69,6 +70,14 @@ all_tests:
 	    $(MAKE) --no-print-directory test_$$t || exit 1; \
 	done
 	@echo "=== ALL TESTBENCHES COMPLETED ==="
+
+# --- Example programs (programs/*.hex, loaded via IMEM_INIT / DMEM_INIT) -------
+demo: | $(SIM_DIR)
+	$(IVERILOG) $(IVFLAGS) -s run_programs -o $(SIM_DIR)/run_programs.out \
+	    $(RTL_SRCS) programs/run_programs.v
+	@$(VVP) -n $(SIM_DIR)/run_programs.out | grep -v "Not enough words" \
+	    | tee $(SIM_DIR)/run_programs.log
+	@grep -q "^ALL PASS" $(SIM_DIR)/run_programs.log
 
 # --- Synthesis (generic cells, resource estimate) -----------------------------
 synth: | $(RES_DIR)
