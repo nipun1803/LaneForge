@@ -22,12 +22,12 @@ flowchart LR
 | | |
 |---|---|
 | **Lanes** | 4 by default; 1, 4 or 8 via the `LANES` parameter |
-| **Lane width** | 8 bits by default; any power of two via `WIDTH` |
+| **Lane width** | 8 bits by default; supported `WIDTH` values: 2, 4, 8 and 16 |
 | **Instructions** | 16 instructions of 16 bits: add, subtract, AND, OR, XOR, compare, shift, multiply, load, store, scalar broadcast, halt |
 | **Registers** | 8 vector registers + 1 scalar register |
 | **Execution** | one instruction per clock cycle |
-| **Verification** | 9 self-checking testbenches, 825,600 checks, all passing; 23 of 23 planted bugs caught |
-| **Tools** | Icarus Verilog, Yosys, VS Code + WaveTrace |
+| **Verification** | 9 self-checking testbenches, 826,122 default-configuration checks, all passing; 23 of 23 planted bugs caught |
+| **Tools** | Icarus Verilog, Yosys, Python 3.9+ for verification evidence, VS Code + WaveTrace |
 
 ## How it works
 
@@ -59,11 +59,17 @@ brew install icarus-verilog yosys      # Ubuntu/WSL: sudo apt install iverilog y
 make all_tests              # run every testbench (4 lanes x 8 bits)
 make all_tests LANES=8      # 8 lanes
 make all_tests LANES=1      # scalar baseline
+make verify_matrix          # complete logs for all 12 supported configurations
+make mutation_tests         # 23 seeded RTL faults and 6 coverage-guard probes
 make demo                   # run the example programs in programs/
 make synth LANES=4          # synthesis report -> results/synth_L4_W8.txt
 ```
 
+Synthesis uses `synthesis/simd_synth_top.v` with variable instruction inputs. Its generic cell count includes the datapath, data memory, PC and counters; instruction ROM is excluded. The saved report includes the tool version, parameters, command and source hashes. See [docs/synthesis_and_performance.md](docs/synthesis_and_performance.md).
+
 Each test ends with `ALL PASS` or `FAILED with N errors`. Waveforms are saved as `sim/tb_<name>_L<lanes>_W<width>.vcd`. More: [docs/getting_started.md](docs/getting_started.md).
+
+The evidence runners use Python's standard library and temporary source copies. Saved reports include tool versions, commands and source hashes. The matrix tests all combinations of `LANES=1,4,8` and `WIDTH=2,4,8,16`; mutation definitions are in [scripts/mutation_cases.py](scripts/mutation_cases.py).
 
 ## Documentation
 
@@ -81,7 +87,10 @@ Each test ends with `ALL PASS` or `FAILED with N errors`. Waveforms are saved as
 | How it was tested and the results | [docs/verification.md](docs/verification.md) |
 | Hardware cost and performance measurement | [docs/synthesis_and_performance.md](docs/synthesis_and_performance.md) |
 | IEEE report | [docs/report/main.pdf](docs/report/main.pdf) |
-| Test evidence (all testbenches + example programs) | [results/test_logs.txt](results/test_logs.txt) |
+| Current complete verification matrix | [results/verification_matrix.txt](results/verification_matrix.txt) |
+| RTL mutation evidence | [results/mutations.txt](results/mutations.txt) |
+| Coverage-guard evidence | [results/coverage_guards.txt](results/coverage_guards.txt) |
+| Historical tests and example-program evidence | [results/test_logs.txt](results/test_logs.txt) |
 | Demo video | _link to be added_ |
 
 ## Repository layout
@@ -99,8 +108,10 @@ SIMD/
 │   ├── vector_control.v  instruction decoder
 │   └── simd_top.v        the complete processor
 ├── tb/                   self-checking testbenches, one per module
+├── synthesis/            wrapper for generic resource estimation (instruction ROM excluded)
 ├── sim/                  simulation outputs (not in git)
-├── results/              synthesis reports
+├── results/              synthesis and verification evidence
+├── scripts/              verification runners, mutation definitions and waveform renderer
 ├── programs/             example programs (hex) and their runner; assembler in Phase II
 └── docs/                 documentation and the IEEE report
 ```
@@ -122,7 +133,7 @@ flowchart LR
 
 ## Team
 
-Every row matches the commit history (`git shortlog -sn`) and Section IV / Fig. 5 of the [IEEE report](docs/report/main.pdf).
+Every row matches the commit history (`git shortlog -sn`) and Section V / Fig. 6 of the [IEEE report](docs/report/main.pdf).
 
 | Member | GitHub | Files and work |
 |---|---|---|

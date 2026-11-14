@@ -4,13 +4,19 @@ What the design costs in hardware, and how the speed of the scalar and SIMD vers
 
 ## Synthesis
 
-Synthesis turns the Verilog into logic gates and flip-flops. `make synth` uses Yosys **generic** synthesis, which is not tied to any particular FPGA. It is a good first estimate of size and shows how each block grows with the number of lanes.
+Synthesis turns the Verilog into logic gates and flip-flops. `make synth` uses Yosys **generic** synthesis, which is not tied to any particular FPGA. The measured configuration is `synthesis/simd_synth_top.v`, a wrapper around the existing `simd_top` processor.
+
+The wrapper enables `EXTERNAL_INSTR=1` and exposes `instr_in` as a variable input. This keeps instruction opcodes and register/memory addresses available to synthesis. Without a program file, the normal instruction memory contains only `HALT`, which can make the datapath constant. The debug and status outputs make the results observable.
+
+The estimate includes the datapath, the 512-word data memory, the PC and counters. **Instruction ROM is excluded.** The wrapper adds no logic of its own after synthesis. Normal tests and example programs use `EXTERNAL_INSTR=0` and continue fetching from instruction memory.
 
 ```bash
-make synth LANES=4        # report: results/synth_L4_W8.txt
+make synth LANES=4 WIDTH=8        # report: results/synth_L4_W8.txt
 ```
 
-### Results, 4 lanes × 8 bits
+The report records the Yosys version, UTC generation time, parameters, exact command and SHA-256 hashes of the RTL and wrapper sources. Reproduce it with the recorded command and the same tool version and sources; cell mapping can change between Yosys versions.
+
+### Results, 4 lanes × 8 bits (Yosys 0.70+post)
 
 | Block | Generic cells | Notes |
 |---|---:|---|
@@ -19,14 +25,15 @@ make synth LANES=4        # report: results/synth_L4_W8.txt
 | `result_combiner` | 175 | write-back select + mask summary |
 | `lane_mux` | 32 | one 2-to-1 multiplexer per bit |
 | `vector_control` | 25 | the decoder is tiny |
-| **SIMD core** | **≈ 3,000** | |
-| Top-level logic in `simd_top` itself | 70,989 | data memory, PC, counters, write gating (mostly the data memory) |
-| **Whole `simd_top`** | **73,961** | |
+| **SIMD core** | **2,972** | sum of the five block rows above, including four lane ALUs |
+| Top-level logic in `simd_top` itself | 70,990 | data memory, PC, counters, write gating (mostly the data memory) |
+| Synthesis wrapper itself | 0 | connects the processor ports |
+| **Whole synthesis configuration** | **73,962** | instruction ROM excluded |
 
 ```mermaid
 pie showData
-    title Generic cells in simd_top (4 lanes)
-    "Top-level logic, mostly data memory" : 70989
+    title Generic cells, instruction ROM excluded (4 lanes)
+    "Top-level logic, mostly data memory" : 70990
     "Lane ALUs (4 x 436)" : 1744
     "Register file" : 996
     "Result combiner" : 175
@@ -34,7 +41,7 @@ pie showData
     "Control unit" : 25
 ```
 
-**Why the total is so much bigger than the core.** Generic synthesis has no memory blocks, so it builds the 512 × 32-bit data memory out of 16,384 flip-flops plus the multiplexers needed to read them. On a real FPGA that memory is placed in dedicated RAM blocks (block RAM or distributed RAM) and costs almost no general logic. FPGA results (Phase II) will therefore report the memory and the core separately.
+**Why the total is so much bigger than the core.** Generic synthesis builds the 512 × 32-bit data memory out of 16,384 flip-flops plus read multiplexers. FPGA memory mapping depends on the device and synthesis tool. The current memory has two asynchronous read ports (processor and debug), so direct mapping to synchronous block RAM is not guaranteed. A tool may use distributed RAM, replicate memory, or keep registers and multiplexers. Phase II will measure the actual mapping and report memory and core resources separately. Targeting block RAM may require clocked reads and changes to instruction timing.
 
 ("Top-level logic" is everything synthesised directly inside `simd_top` rather than in a submodule: the data memory, the PC, the counters and the write gating. The report gives it as one number; the data memory alone accounts for 16,384 of its flip-flops.)
 

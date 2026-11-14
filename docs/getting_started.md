@@ -8,6 +8,7 @@ How to install the tools, run the tests, look at waveforms and run synthesis.
 |---|---|---|
 | Icarus Verilog | compiling and simulating Verilog | macOS: `brew install icarus-verilog` · Ubuntu/WSL: `sudo apt install iverilog` |
 | Yosys | synthesis (hardware cost estimate) | macOS: `brew install yosys` · Ubuntu/WSL: `sudo apt install yosys` |
+| Python 3.9+ | reproducible configuration, mutation and coverage evidence | macOS: `brew install python` · Ubuntu/WSL: `sudo apt install python3` |
 | WaveTrace (VS Code extension) or GTKWave | viewing waveforms | VS Code Extensions panel → "WaveTrace" · Linux: `sudo apt install gtkwave` |
 | Tectonic (optional) | building the report PDF | macOS: `brew install tectonic` |
 
@@ -45,6 +46,15 @@ FAILED with 3 errors
 
 `make` stops with an error as soon as a test fails, so `make all_tests` finishing means everything passed.
 
+To reproduce the submitted verification evidence:
+
+```bash
+make verify_matrix         # all 12 combinations of LANES=1,4,8 and WIDTH=2,4,8,16
+make mutation_tests        # 23 RTL mutations and 6 negative coverage probes
+```
+
+These commands use temporary copies, remove their build files after the run, and save complete logs in `results/`. `results/verification_matrix.txt` links each configuration log; `results/mutations.txt` and `results/coverage_guards.txt` record the fault and coverage checks. The runners require only Python's standard library and Icarus Verilog. Each simulation command has a 120-second timeout; `python3 scripts/verify_evidence.py --help` shows the concurrency and timeout options.
+
 ## 3. What happens when you run a test
 
 ```mermaid
@@ -72,10 +82,10 @@ Large exhaustive tests only record the first, easy-to-read part of the run, to k
 ## 5. Run synthesis
 
 ```bash
-make synth LANES=4
+make synth LANES=4 WIDTH=8
 ```
 
-This prints a cell count for the whole design and for each module, and saves the full report to `results/synth_L4_W8.txt`. See [synthesis_and_performance.md](synthesis_and_performance.md) for what the numbers mean.
+This synthesises `synthesis/simd_synth_top.v`, which supplies variable instructions to the processor. It prints the cell hierarchy and saves statistics, tool version, parameters, command and source hashes to `results/synth_L4_W8.txt`. The count includes the datapath, data memory, PC and counters; instruction ROM is excluded. See [synthesis_and_performance.md](synthesis_and_performance.md) for what the numbers mean.
 
 ## 6. Build the report
 
@@ -84,7 +94,7 @@ cd docs/report
 tectonic main.tex           # produces main.pdf
 ```
 
-Or upload `main.tex` and `references.bib` to Overleaf.
+Or upload `main.tex`, `references.bib` and `fig_waveform.tex` to Overleaf, and set `main.tex` as the main document.
 
 ## 7. Troubleshooting
 
@@ -92,7 +102,7 @@ Or upload `main.tex` and `references.bib` to Overleaf.
 |---|---|
 | A test prints `FAIL` lines | Read the first `FAIL` line: it shows the inputs, the wrong output and the expected output. The full log is in `sim/`. |
 | Not sure a rebuild happened after changing `LANES` | It always does, because build files are named per configuration. `make clean` removes all build outputs if you want a fresh start. |
-| `tb_defs` fails with `WIDTH=6` | `WIDTH` must be a power of two (2, 4, 8, 16 ...), because shift amounts use `log2(WIDTH)` bits. |
+| `tb_defs` rejects a `WIDTH` value | Supported values are 2, 4, 8 and 16. Shift amounts require a power of two; wider lanes are outside the current reference-model support. |
 | A new testbench does not compile | The Makefile already passes `-g2012`. Icarus does **not** support associative arrays, `string` methods like `getc()`, `$isunknown`, or unpacked structs. Use fixed-size arrays and `struct packed`. |
 | `Not enough words in the file` warning | Normal when a hex program is shorter than the memory. The rest of memory keeps its default value. |
 | GTKWave is not available on macOS | Use the WaveTrace extension in VS Code. |

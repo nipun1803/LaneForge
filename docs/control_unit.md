@@ -50,7 +50,7 @@ flowchart LR
 1. **Addresses come straight from the instruction bits.** `raddr1` is always bits `[8:6]`, `waddr` is always bits `[11:9]` (the `vd` and `vreg` fields are in the same place), `mem_addr` is always bits `[8:0]`. They are driven even when unused; it does no harm, because the enables decide whether anything happens.
 2. **Defaults first.** Every output starts as "do nothing" (all enables 0, `alu_op = NOP`). The `case` on the opcode then turns on only what that instruction needs. An unused or reserved opcode therefore does nothing, and no latches are created.
 3. **`VST` reads through port 2.** For a store, `raddr2` is switched to the `vreg` field, so store data always leaves the register file on read port 2.
-4. **At most one write per instruction.** Each instruction writes to exactly one place (a register, the scalar, or memory) or none. The testbench checks this for every possible instruction.
+4. **At most one data destination per instruction.** The decoder enforces `rf_we + mem_we + s_we <= 1`, so an instruction writes to at most one vector register, the scalar register, or data memory. Compare instructions additionally update the mask status through `mask_we`. The testbench checks the data-destination invariant and the expected mask enable for every possible instruction.
 
 ## Example: decoding `VCMPLT v2, v0, s` (`0x7404`)
 

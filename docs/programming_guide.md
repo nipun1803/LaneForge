@@ -82,6 +82,8 @@ simd_top #(.LANES(4), .WIDTH(8),
            .DMEM_INIT("programs/add_data.hex")) dut ( /* ports */ );
 ```
 
+Connect `instr_in` to `16'h0000` in this default instruction-memory mode. The optional external instruction mode is used by the synthesis wrapper; see [top_level_processor.md](top_level_processor.md).
+
 Icarus prints `Not enough words in the file` when a file is shorter than the memory. That is normal: the remaining instruction slots stay `HALT` and the remaining data words stay 0.
 
 ### Option 2: from a testbench
@@ -115,7 +117,7 @@ $display("memory[2] = %h, cycles = %0d", dbg_rdata, cycle_count);
 
 ## Tips
 
-* End every program with `HALT`. (If you forget, the processor still stops at the first empty slot, which costs one extra cycle.)
+* End every program with `HALT`. A short program can stop at an untouched HALT-filled slot, but a full 256-instruction image without `HALT` wraps the PC and repeats. External instruction sources must supply `HALT` explicitly.
 * Use `SLI` + the `s` bit for constants instead of loading a vector of copies.
 * Remember that `VCMPLT` is signed: values `0x80`–`0xFF` count as negative.
 * Data-memory addresses go up to 511; there are 8 vector registers, `v0`–`v7`.

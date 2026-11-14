@@ -88,7 +88,7 @@ sequenceDiagram
 
 | Decision | Choice | Why |
 |---|---|---|
-| Lane count and width | parameters `LANES`, `WIDTH` on every module | one design gives the scalar, 4-lane and 8-lane versions |
+| Lane count and width | vector modules use `LANES` and `WIDTH`; `lane_alu` uses only `WIDTH`; the decoder has a fixed ISA interface and no parameters | one design gives the scalar, 4-lane and 8-lane versions |
 | Execution | single-cycle (one instruction per cycle) | cycle counts equal instruction counts, so results are easy to check by hand |
 | Where constants live | one header file, `rtl/simd_defs.vh` | every file uses the same opcodes and field positions |
 | Memories | inside the processor top level | the design is self-contained; testbenches load programs directly |

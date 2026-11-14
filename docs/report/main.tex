@@ -1,6 +1,7 @@
 % =============================================================================
 %  SIMD Vector Processing Unit - IEEE-format project report (Phase I)
-%  Build:  tectonic main.tex     (or upload main.tex + references.bib to Overleaf)
+%  Build: tectonic main.tex (Overleaf: upload main.tex, references.bib and
+%  fig_waveform.tex; set main.tex as the main document)
 \documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
 
@@ -21,7 +22,7 @@
 \definecolor{cMem}{HTML}{5D6D7E}     % memory           - slate
 \definecolor{cPass}{HTML}{27AE60}
 \definecolor{cFail}{HTML}{D64541}
-% ---- member colours (Fig. 5) ----
+% ---- member colours (Fig. 6) ----
 \definecolor{cNip}{HTML}{E8772E}
 \definecolor{cMoh}{HTML}{1E9E6A}
 \definecolor{cAnu}{HTML}{2E6FD8}
@@ -58,8 +59,9 @@ scalar-versus-SIMD comparisons use an identical instruction set, control path
 and clock. Every module is checked by a self-checking testbench against an
 independent reference model; the lane ALU and the instruction decoder are
 verified exhaustively, and the integrated unit is checked against an
-instruction-set reference model. In total 825{,}600 automated checks pass for
-$L=1,4,8$, and mutation testing detects all 23 deliberately injected faults.
+instruction-set reference model. The default $L=4$, $W=8$ suite comprises
+826{,}122 automated checks with no failures. All twelve combinations of
+$L=1,4,8$ and $W=2,4,8,16$ pass, and mutation testing detects all 23 seeded faults.
 Cycle-count speedup and FPGA resource and frequency measurements are the next
 stage of the work.
 \end{abstract}
@@ -208,8 +210,12 @@ to all lanes. $L$ lane ALUs then compute in parallel under one shared opcode,
 and the result combiner selects the write-back value from the ALU, the data
 memory or the broadcast scalar. All state is updated on the next rising clock
 edge, so every instruction completes in one cycle (CPI~$=1$). The design is
-parameterised by \texttt{LANES} ($L$) and \texttt{WIDTH} ($W$), which pass down
-through every module; the scalar baseline is the same RTL with $L=1$.
+parameterised by \texttt{LANES} ($L$) and \texttt{WIDTH} ($W$). The vector
+datapath modules use both parameters; each lane ALU uses only $W$, and the
+decoder has a fixed ISA interface independent of $L$ and $W$. The scalar
+baseline is the same RTL with $L=1$.
+Supported project lane widths are $W=2,4,8,16$; wider configurations require
+a revised reference model and separate validation.
 
 \begin{figure*}[t]
 \centering
@@ -302,11 +308,12 @@ one full vector, an 8-bit program counter and a mask status register.
 Three design choices make the top level robust and measurable:
 \begin{itemize}
 \item \textbf{Single point of write gating.} The decoder's register, scalar,
-      memory and mask write enables are ANDed with $\overline{\text{halted}}$ in
-      one place, so no architectural state can change after \texttt{HALT}.
-      The PC does not advance on \texttt{HALT}, so it records where execution
-      stopped. The instruction memory is pre-filled with \texttt{HALT}, so a
-      program that omits its final \texttt{HALT} still terminates.
+      memory and mask write enables are gated with
+      $\neg\text{halted}\land\neg\text{rst}$, blocking instruction writes
+      during reset and after \texttt{HALT}. Reset clears processor state and
+      preserves both memories. The PC stays on \texttt{HALT}. Pre-filled
+      \texttt{HALT} slots stop short programs; a full 256-slot image without
+      \texttt{HALT} wraps and repeats. External sources must supply \texttt{HALT}.
 \item \textbf{Performance counters.} \texttt{cycle\_count} and
       \texttt{instr\_count} count executed cycles and instructions (equal, since
       CPI~$=1$), and \texttt{lane\_ops} adds $L$ for every vector ALU
@@ -314,9 +321,11 @@ Three design choices make the top level robust and measurable:
       \texttt{lane\_ops}/\texttt{cycle\_count}.
 \item \textbf{Debug read port.} An asynchronous read port on the data memory lets
       the testbench check results through the design's own interface. It also
-      gives synthesis an observable path from the datapath to an output; without
-      it, every result would end in a memory that nothing reads and the tools
-      would remove the whole datapath.
+      gives synthesis an observable path for stored datapath results. For resource
+      estimation, a separate wrapper enables the optional external-instruction
+      mode, so the default \texttt{HALT}-only instruction memory cannot make the
+      datapath constant. Normal execution continues to fetch from instruction
+      memory; instruction ROM is excluded from the synthesis estimate.
 \end{itemize}
 % -----------------------------------------------------------------------------
 \subsection{Instruction set}
@@ -395,8 +404,10 @@ ALU opcode, register addresses, write enables, write-back select and the
 \texttt{halt} and \texttt{mask\_we} flags. Register addresses are taken straight
 from the instruction fields; only the enables depend on the opcode. For
 \texttt{VST} the second read port is redirected to the store register, so store
-data always leaves the register file through port~2. Every instruction performs
-at most one architectural write.
+data always leaves the register file through port~2. Every instruction has at
+most one data destination among the vector registers, scalar register and data
+memory (\texttt{rf\_we + mem\_we + s\_we} $\leq 1$). Compare instructions
+additionally update mask status through \texttt{mask\_we}.
 
 \paragraph{Result combiner} Selects the write-back value from the ALU, the data
 memory (\texttt{VLD}) or the broadcast scalar (\texttt{VBCAST}); the reserved
@@ -442,18 +453,25 @@ multiplexer per bit. The replicated scalar is also exported so that
 \texttt{VBCAST} reuses it through the result combiner.
 % -----------------------------------------------------------------------------
 \subsection{Verification methodology}
-Each module has a self-checking testbench that compares the design under test
-with an independent reference model. The ALU reference uses integer modulo
-arithmetic and an explicit two's-complement conversion instead of Verilog
-truncation, so it cannot share the RTL's mistakes. Where the input space is
-small, testing is exhaustive: all $2^{16}$ operand pairs for each of the ten
-lane-ALU operations, and all $2^{16}$ instruction words for the decoder.
-Elsewhere, directed edge cases are combined with thousands of random vectors.
-The integrated unit is tested with programs whose \emph{entire} final
-architectural state (all 512 memory words, all registers, the scalar, the mask,
-the PC and every counter) is compared with an instruction-set reference model
-that executes the same program. Faults were deliberately injected into the RTL
-to show that each test catches the class of bug it targets.
+Each module has a self-checking testbench. The ALU reference uses integer
+modulo arithmetic and explicit two's-complement conversion to reduce shared
+implementation errors. At $W=8$, all $2^{16}$ operand pairs are tested for each
+of the ten lane-ALU operations; the decoder tests all $2^{16}$ instruction
+words. Other tests combine directed cases with random vectors. Whole-processor
+tests compare all memory words, registers, scalar, mask, PC and counters with
+an instruction-set model.
+
+Guards require every ALU opcode, 4{,}096 words per decoder opcode, and nonempty
+register-file, MUX and combiner test sections. Each lane's compare flag must be
+seen low and high, and all four write-back selections exercised. Six
+incomplete-stimulus probes are rejected.
+
+\texttt{make verify\_matrix} saves twelve configuration runs in
+\texttt{results/verification\_matrix.txt}. \texttt{make mutation\_tests}
+saves passing baselines and 23 detected faults in \texttt{results/mutations.txt},
+plus coverage probes in \texttt{results/coverage\_guards.txt}. Logs include tool
+versions, commands, source hashes and exact mutations. Build errors, timeouts
+and survivors fail verification.
 Fig.~\ref{fig:verif} shows the flow and Table~\ref{tab:ver} summarises the
 results.
 
@@ -489,7 +507,7 @@ results.
 \end{tikzpicture}
 \caption{Self-checking verification flow used by every testbench. The same
 stimulus drives the RTL and an independent reference model; any mismatch is
-logged as a failure. Injected faults confirm that the checks catch real bugs.}
+logged as a failure. All 23 seeded RTL faults are detected.}
 \label{fig:verif}
 \end{figure}
 
@@ -508,19 +526,21 @@ Register file   & shadow model, read-during-write & 15{,}248 \\
 Lane MUX        & all 256 scalars broadcast       & 12{,}772 \\
 Result combiner & distinct sources, all masks     & 19{,}216 \\
 Control unit    & all 65{,}536 instructions       & 65{,}536 \\
-Top level       & 9 programs vs.\ ISA model       & 4{,}752 \\
+Top level       & 8 scenarios and boundary checks & 5{,}274 \\
 \midrule
-\multicolumn{2}{@{}l}{Total (incl.\ spec and smoke tests), all pass} & 825{,}600 \\
+\multicolumn{2}{@{}l}{Total (incl.\ spec and smoke tests), all pass} & 826{,}122 \\
 \multicolumn{2}{@{}l}{Injected faults detected} & 23 / 23 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The full suite also passes for $L=1$, $L=8$ and $W=16$, which confirms that the
-parameterisation is correct. The top-level programs confirm CPI~$=1$: for
-example, \texttt{VLD, VLD, VADD, VST, HALT} completes in exactly five cycles
-with $L=4$ element operations, and an all-operations program of 44
-instructions completes in 44 cycles with 80 element operations.
+P1--P8 produce nine final-state comparisons: P7 is checked at \texttt{HALT} and
+50 cycles later. P6 checks PC wrap over 258 \texttt{NOP} cycles. P8 resets on a
+pending \texttt{VST}, checking all 512 memory words and cleared processor state.
+The reference normalizes operands modulo $2^W$. The 826{,}122 total applies to
+$L=4$, $W=8$. CPI~$=1$: \texttt{VLD, VLD, VADD, VST, HALT} takes five cycles
+and four element operations; the 44-instruction all-operations program takes
+44 cycles and 80 element operations.
 Fig.~\ref{fig:wave} shows the simulated waveform of the vector-add program,
 loaded from \texttt{programs/add.hex}: during the \texttt{VADD} cycle the four
 lane results ($17, 18, 19, 20$) are all produced together and written back on
@@ -539,12 +559,20 @@ vector at the next rising edge. The program halts after exactly five cycles.}
 \end{figure*}
 
 \subsection{Implementation status and planned evaluation}
-The complete unit synthesises with Yosys. In generic logic cells at $L=4$, each
-lane ALU costs 436 cells, the register file 996, the result combiner 175, the
-lane multiplexer 32 and the decoder 25, so the SIMD core is about 3k cells. The
-total of about 74k cells is dominated by the data memory, which generic
-synthesis builds from flip-flops; on an FPGA it maps to block or distributed
-RAM, so memory and core will be reported separately.
+The \texttt{simd\_synth\_top} wrapper uses Yosys~0.70+post to synthesise the
+processor with variable instruction inputs and observable status and data-memory
+outputs. This configuration includes the datapath, the
+512-word data memory, PC and counters, and excludes instruction ROM. The command
+\texttt{make synth LANES=4 WIDTH=8} reproduces the measurement; the saved report
+records the tool version, parameters, exact command and source SHA-256 hashes.
+At $L=4$, $W=8$, each lane ALU costs 436 generic cells, the register file 996,
+the result combiner 175, the lane multiplexer 32 and the decoder 25. The SIMD
+core therefore costs 2{,}972 cells and the whole configuration 73{,}962 cells.
+Data memory dominates the total with 16{,}384 flip-flops and read multiplexers.
+Its two asynchronous read ports prevent a guaranteed synchronous block-RAM
+mapping. FPGA tools may use distributed RAM, replicated memory or registers;
+actual memory and core resources will be measured separately. Block-RAM
+targeting may require clocked reads and changes to instruction timing.
 
 Phase~II runs three workloads on $L=1,4,8$: array addition, threshold counting
 with scalar broadcast, and bitwise masking. With CPI~$=1$, the speedup is
@@ -558,13 +586,14 @@ quantify the area cost of parallelism.
 % -----------------------------------------------------------------------------
 \section{Conclusion}
 This Phase~I work delivers a complete, parameterised SIMD vector processing unit
-in synthesisable Verilog: eight RTL modules integrated into a single-cycle
+in synthesisable Verilog: seven processor RTL modules plus a shared ISA header,
+integrated into a single-cycle
 processor with a sixteen-instruction ISA, scalar broadcast, compare masks and
 performance counters. The design is verified by a self-checking suite of
-825{,}600 checks with no failures, including exhaustive testing of the lane ALU
+826{,}122 checks at $L=4$, $W=8$ with no failures, including exhaustive testing of the lane ALU
 and the instruction decoder and whole-state comparison of the integrated unit
 against an instruction-set reference model; all 23 injected faults are
-detected, and the suite passes for $L=1$, $4$ and $8$. Example programs loaded
+detected, and all twelve supported configurations pass. Example programs loaded
 from hex files execute at exactly one cycle per instruction, and the simulated
 waveform (Fig.~\ref{fig:wave}) confirms that all lanes compute in the same
 cycle with no interaction between them.
@@ -574,7 +603,8 @@ critical path runs through the ALU and memory in one clock period; programs are
 still hand-encoded; and the generic synthesis maps the data memory to flip-flops.
 Phase~II addresses these by adding an assembler, measuring scalar-versus-SIMD
 speedup on the benchmark workloads, scaling to eight lanes, and reporting FPGA
-resource use and maximum frequency with the memories mapped to block RAM.
+resource use and maximum frequency. Memory mapping will be measured on the
+target FPGA; adapting the asynchronous read ports for block RAM is future work.
 
 % -----------------------------------------------------------------------------
 \section{Individual Contributions}

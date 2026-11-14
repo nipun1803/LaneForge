@@ -26,10 +26,10 @@ flowchart LR
 | **Exhaustive testing** | every possible input is tried | lane ALU (all 65,536 input pairs × 10 operations), control unit (all 65,536 instructions) |
 | **Directed edge cases** | hand-picked hard cases: overflow, `0x80` vs `0x7F`, shift by 0 and 7, equal operands | every ALU test |
 | **Random testing** | thousands of random inputs, different in every lane | vector ALU, register file, lane MUX, result combiner |
-| **Coverage counting** | each testbench counts how often every operation / case was hit, and fails if something was never tested | all |
+| **Coverage tracking and enforcement** | ALU benches require every opcode to be exercised; the decoder requires 4,096 words per opcode; register-file, lane-MUX and result-combiner benches require every named section. Vector-mask and write-back-select coverage are also enforced | six datapath/control benches |
 | **Whole-processor check** | after a program finishes, the *entire* state (all 512 memory words, all registers, scalar, mask, PC, counters) is compared with an instruction-set model that ran the same program | `simd_top` |
-| **Planted bugs** | bugs were inserted on purpose into copies of the design, to prove the tests catch them | every module |
-| **All sizes** | the whole suite is run with 1, 4 and 8 lanes and with 16-bit lanes | all |
+| **Planted bugs** | 23 specific faults are inserted separately into temporary copies; each affected bench first passes on unmodified RTL | six RTL modules |
+| **Configuration matrix** | all 12 combinations of 1, 4 and 8 lanes with 2-, 4-, 8- and 16-bit lanes | all nine testbenches |
 
 ## Results (4 lanes × 8 bits)
 
@@ -43,15 +43,18 @@ flowchart LR
 | `tb_lane_mux` | `lane_mux` | pass-through, broadcast of all 256 scalar values | 12,772 | PASS |
 | `tb_result_combiner` | `result_combiner` | each source selected, reserved code, every mask pattern | 19,216 | PASS |
 | `tb_vector_control` | `vector_control` | **every** possible instruction | 65,536 | PASS |
-| `tb_simd_top` | `simd_top` | 9 programs, full final state vs. instruction-set model | 4,752 | PASS |
-| **Total** | | | **825,600** | **ALL PASS** |
+| `tb_simd_top` | `simd_top` | 8 scenarios, 9 final-state comparisons, reset-store and full-image boundary checks | 5,274 | PASS |
+| **Total** | | | **826,122** | **ALL PASS** |
 
-| Configuration | `make all_tests` |
-|---|---|
-| `LANES=1` (scalar) | PASS |
-| `LANES=4` (default) | PASS |
-| `LANES=8` | PASS |
-| `WIDTH=16` | PASS |
+The current [verification matrix](../results/verification_matrix.txt) records complete runs of all nine testbenches. Each configuration log includes compiler/simulator commands, tool version, source hashes and check totals measured by the benches. The [Batch 2 snapshot](../results/batch2_checks.txt) preserves the earlier reset and narrow-width regression evidence; its totals and hashes describe that earlier source revision.
+
+| Lanes | WIDTH=2 | WIDTH=4 | WIDTH=8 | WIDTH=16 |
+|---|---|---|---|---|
+| 1 (scalar) | [PASS](../results/configurations/L1_W2.txt) | [PASS](../results/configurations/L1_W4.txt) | [PASS](../results/configurations/L1_W8.txt) | [PASS](../results/configurations/L1_W16.txt) |
+| 4 | [PASS](../results/configurations/L4_W2.txt) | [PASS](../results/configurations/L4_W4.txt) | [PASS](../results/configurations/L4_W8.txt) | [PASS](../results/configurations/L4_W16.txt) |
+| 8 | [PASS](../results/configurations/L8_W2.txt) | [PASS](../results/configurations/L8_W4.txt) | [PASS](../results/configurations/L8_W8.txt) | [PASS](../results/configurations/L8_W16.txt) |
+
+Run `make verify_matrix` to regenerate this evidence. Check totals vary with lane count and width: exhaustive ALU tests use all operand pairs up to 8-bit lanes, while 16-bit lanes use directed and random inputs. The 826,122 total applies to `LANES=4, WIDTH=8`.
 
 ## Key checks, explained
 
@@ -61,7 +64,7 @@ flowchart LR
 
 **Read-during-write (register file).** While a register is being written, reading it must still return the *old* value until the clock edge. This is what makes `VADD v1, v1, v2` correct.
 
-**Every instruction (control unit).** All 65,536 possible 16-bit words are decoded and compared with a reference table, including words with garbage in the reserved bits. The test also checks that no instruction writes to more than one place.
+**Every instruction (control unit).** All 65,536 possible 16-bit words are decoded and compared with a reference table, including words with garbage in the reserved bits. The test also checks `rf_we + mem_we + s_we <= 1`: at most one data destination among vector registers, the scalar register and data memory. Compare instructions additionally update mask status through `mask_we`, which is checked against the reference table.
 
 ## Whole-processor programs (`tb_simd_top`)
 
@@ -72,43 +75,57 @@ flowchart LR
 | P3 scalar | `SLI`, `VBCAST`, zero-extension of the constant | 10 | 10 | 8 |
 | P4 hazards | `VADD v1,v1,v1` six times in a row; store then load the same address | 14 | 14 | 32 |
 | P5 mask | the mask changes only on compare instructions | 9 | 9 | 16 |
-| P6 no-halt | a program without `HALT` stops at the first empty slot | 3 | 4 | 4 |
+| P6 no-halt | a short program without `HALT` stops at an untouched HALT-filled slot | 3 | 4 | 4 |
 | P7 freeze | 50 more cycles after `HALT` change nothing | 44 | 44 | 80 |
-| P8 reset | reset in the middle of a run, then a clean run | 44 | 44 | 80 |
+| P8 reset | reset before a pending store preserves every memory word and clears processor state, then a clean run | 44 | 44 | 80 |
 
-Cycles always equal the instructions executed (P6 has one extra: the `HALT` in the empty slot). This confirms **one instruction per cycle**.
+The eight named scenarios (P1–P8) produce nine final-state comparisons: P7 is compared once at `HALT` and again after 50 additional cycles. Cycles always equal the instructions executed (P6 has one extra: the `HALT` in the empty slot). This confirms **one instruction per cycle**.
+
+P6 also fills all 256 instruction slots with `NOP` and runs for a bounded 258 cycles. It checks that the processor stays running, the PC wraps to 2, and the counters match. Automatic termination therefore depends on reaching an untouched HALT-filled slot. P8 snapshots all 512 data-memory words before asserting reset on a pending `VST` and checks that none change on the reset edge.
+
+## Lane-width support
+
+Supported project widths are 2, 4, 8 and 16 bits; `tb_defs` rejects other values. The ALU reference model normalizes both operands modulo `2^WIDTH` before computing results, matching the RTL input widths even when directed tests use wider constants. The model uses 64-bit `longint` intermediates; wider lanes require a revised model and separate validation rather than an unrestricted power-of-two support claim.
 
 ## Planted bugs: 23 of 23 caught
 
-To show that the tests really detect mistakes, each bug below was inserted into a copy of the design and the tests were run on it. Every bug was caught.
+Run `make mutation_tests` to reproduce the 23 independent faults defined in [mutation_cases.py](../scripts/mutation_cases.py). [Mutation evidence](../results/mutations.txt) contains passing unmodified baselines, exact replacements, altered-source hashes and complete failing simulation logs. A detected fault requires a completed self-checking simulation with `FAILED with N errors`; compiler errors, timeouts and surviving faults make the runner fail. All cases use `LANES=4, WIDTH=8` except M20, which uses `WIDTH=16` to expose sign extension.
 
-| Module | Planted bug | Caught by |
-|---|---|---|
-| `vector_alu` | one 32-bit adder instead of four 8-bit lanes | lane-independence check |
-| `vector_alu` | lanes 0 and 1 swapped | walking-lane check |
-| `vector_regfile` | write data forwarded straight to the read port | read-during-write check |
-| `vector_regfile` | port 2 uses port 1's address | readback check |
-| `vector_regfile` | reset does not clear the scalar | reset check |
-| `vector_regfile` | write enable ignored | write-enable check |
-| `lane_mux` | scalar copied into lane 0 only | pass-through check |
-| `lane_mux` | select inverted | pass-through check |
-| `lane_mux` | only the top lane gets the scalar | broadcast check |
-| `result_combiner` | memory and broadcast sources swapped | select check |
-| `result_combiner` | `any_true` looks only at lane 0 | mask-pattern check |
-| `result_combiner` | lane count skips the top lane | mask-pattern check |
-| `result_combiner` | reserved select passes the ALU result | reserved-code check |
-| `vector_control` | `VST` also writes a register | enable check |
-| `vector_control` | `s` bit ignored | operand-select check |
-| `vector_control` | `VST` reads the wrong register | address check |
-| `vector_control` | `VBCAST` selects memory | write-back select check |
-| `vector_control` | `halt` has no default value (latch) | enable check |
-| `simd_top` | store takes data from the wrong read port | P1 |
-| `simd_top` | `SLI` sign-extends instead of zero-extending | P3 with 16-bit lanes* |
-| `simd_top` | `lane_ops` counts every instruction | P1 |
-| `simd_top` | mask updated on every ALU instruction | P2 |
-| `simd_top` | lane MUX bypassed (scalar operand ignored) | P2 |
+| ID | Module | Planted bug | Caught by |
+|---|---|---|---|
+| M01 | `vector_alu` | one 32-bit ADD instead of four 8-bit lane additions | lane-independence check |
+| M02 | `vector_alu` | write-back lanes 0 and 1 swapped | walking-lane check |
+| M03 | `vector_regfile` | pending write forwarded before the clock edge | read-during-write check |
+| M04 | `vector_regfile` | port 2 uses port 1's address | port-independence check |
+| M05 | `vector_regfile` | reset does not clear the scalar | reset check |
+| M06 | `vector_regfile` | vector write enable ignored | write-enable check |
+| M07 | `lane_mux` | scalar copied into lane 0 only | broadcast check |
+| M08 | `lane_mux` | select inverted | pass-through check |
+| M09 | `lane_mux` | scalar copied into the top lane only | broadcast check |
+| M10 | `result_combiner` | memory and broadcast sources swapped | select check |
+| M11 | `result_combiner` | `any_true` looks only at lane 0 | mask-pattern check |
+| M12 | `result_combiner` | lane count skips the top lane | mask-pattern check |
+| M13 | `result_combiner` | reserved select passes the ALU result | reserved-code check |
+| M14 | `vector_control` | `VST` also writes a register | enable check |
+| M15 | `vector_control` | `s` bit ignored | operand-select check |
+| M16 | `vector_control` | `VST` reads the wrong register | address check |
+| M17 | `vector_control` | `VBCAST` selects memory | write-back select check |
+| M18 | `vector_control` | `halt` has no default value | output/enable checks |
+| M19 | `simd_top` | store takes data from the wrong read port | P1 |
+| M20 | `simd_top` | `SLI` sign-extends instead of zero-extending | P3 with 16-bit lanes* |
+| M21 | `simd_top` | `lane_ops` counts every instruction | P1 |
+| M22 | `simd_top` | mask updated on every ALU instruction | P2 |
+| M23 | `simd_top` | lane MUX bypassed (scalar operand ignored) | P2 |
 
 \* With 8-bit lanes there are no extra bits to extend, so this bug cannot change any result. That is why the suite is also run with 16-bit lanes.
+
+## Coverage guards
+
+The lane and vector ALU benches reject any unexercised opcode. The decoder requires all 4,096 encodings of each opcode. The register-file, lane-MUX and result-combiner benches reject empty named sections; the vector ALU also requires every lane's compare flag to be seen both low and high, and the result combiner requires all four write-back selections.
+
+The smoke, ISA-definition and integration benches use fixed checks and program scenarios rather than a general coverage-hole detector. Coverage guards are reported separately from the 826,122 functional-check total.
+
+[Coverage evidence](../results/coverage_guards.txt) records six negative probes on healthy RTL: omit HALT stimulus from the lane ALU, omit VMUL stimulus from the vector ALU, omit one decoder instruction word, and empty the random/toggling/selection section of the register-file, lane-MUX and result-combiner benches. All six are rejected with a coverage-hole diagnostic. These probes are separate from the 23 RTL mutations and are reproduced by `make mutation_tests`.
 
 ## Reading test output
 

@@ -2,7 +2,9 @@
 
 The blocks that hold and process data. Each one is in `rtl/` and has its own testbench `tb/tb_<module>.v`.
 
-All modules take two parameters: `LANES` (default 4) and `WIDTH` (default 8). In the tables, **VW** means `LANES × WIDTH`, the width of one vector (32 bits by default).
+The vector datapath modules take two parameters: `LANES` (default 4) and `WIDTH` (default 8). The single-lane `lane_alu` takes only `WIDTH`. In the tables, **VW** means `LANES × WIDTH`, the width of one vector (32 bits by default).
+
+Supported project lane widths are 2, 4, 8 and 16 bits. Wider RTL instances require a wider reference model and separate validation before they can be advertised as supported.
 
 ```mermaid
 flowchart LR
@@ -157,6 +159,8 @@ It also summarises the compare mask:
 | `mem_rdata` | in | VW | from data memory |
 | `bcast` | in | VW | from the lane MUX |
 | `wb_data` | out | VW | value to write back |
-| `mask_out`, `any_true`, `all_true`, `mask_count` | out | `LANES`, 1, 1, log2(`LANES`+1) | mask summary |
+| `mask_out`, `any_true`, `all_true`, `mask_count` | out | `LANES`, 1, 1, `$clog2(LANES+1)` | mask summary |
+
+`$clog2(LANES+1)` rounds log2(`LANES+1`) up to an integer, so `mask_count` can represent every value from 0 to `LANES`: 1 bit for one lane, 3 bits for four lanes and 4 bits for eight lanes.
 
 **Next:** [control_unit.md](control_unit.md)
