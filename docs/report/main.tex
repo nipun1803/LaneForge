@@ -521,6 +521,22 @@ parameterisation is correct. The top-level programs confirm CPI~$=1$: for
 example, \texttt{VLD, VLD, VADD, VST, HALT} completes in exactly five cycles
 with $L=4$ element operations, and an all-operations program of 44
 instructions completes in 44 cycles with 80 element operations.
+Fig.~\ref{fig:wave} shows the simulated waveform of the vector-add program,
+loaded from \texttt{programs/add.hex}: during the \texttt{VADD} cycle the four
+lane results ($17, 18, 19, 20$) are all produced together and written back on
+a single clock edge.
+
+\begin{figure*}[t]
+\centering
+\input{fig_waveform.tex}
+\caption{Simulation waveform of the vector-add program
+(\texttt{VLD, VLD, VADD, VST, HALT}) with $L=4$, $W=8$, drawn directly from the
+Icarus Verilog VCD by \texttt{scripts/vcd\_to\_tikz.py}. The ALU output is split
+into its four 8-bit lanes: in the highlighted \texttt{VADD} cycle every lane
+computes $vs1_i + vs2_i$ simultaneously, and \texttt{rf\_we} commits the whole
+vector at the next rising edge. The program halts after exactly five cycles.}
+\label{fig:wave}
+\end{figure*}
 
 \subsection{Implementation status and planned evaluation}
 The complete unit synthesises with Yosys. In generic logic cells at $L=4$, each
@@ -538,6 +554,27 @@ S(L) = \frac{\text{cycles}(L=1)}{\text{cycles}(L)} \le L ,
 and throughput is reported in element operations per cycle. FPGA resource use
 (LUTs, FFs, DSPs) and maximum frequency will be measured for each lane count to
 quantify the area cost of parallelism.
+
+% -----------------------------------------------------------------------------
+\section{Conclusion}
+This Phase~I work delivers a complete, parameterised SIMD vector processing unit
+in synthesisable Verilog: eight RTL modules integrated into a single-cycle
+processor with a sixteen-instruction ISA, scalar broadcast, compare masks and
+performance counters. The design is verified by a self-checking suite of
+825{,}600 checks with no failures, including exhaustive testing of the lane ALU
+and the instruction decoder and whole-state comparison of the integrated unit
+against an instruction-set reference model; all 23 injected faults are
+detected, and the suite passes for $L=1$, $4$ and $8$. Example programs loaded
+from hex files execute at exactly one cycle per instruction, and the simulated
+waveform (Fig.~\ref{fig:wave}) confirms that all lanes compute in the same
+cycle with no interaction between them.
+
+The current design has deliberate limitations: it is single-cycle, so the
+critical path runs through the ALU and memory in one clock period; programs are
+still hand-encoded; and the generic synthesis maps the data memory to flip-flops.
+Phase~II addresses these by adding an assembler, measuring scalar-versus-SIMD
+speedup on the benchmark workloads, scaling to eight lanes, and reporting FPGA
+resource use and maximum frequency with the memories mapped to block RAM.
 
 % -----------------------------------------------------------------------------
 \section{Individual Contributions}
@@ -584,8 +621,9 @@ Fig.~\ref{fig:team} maps each file to the member who wrote it.
 \node[chip=cOmk, minimum width=3.50cm] at (12.550,-1.6) {\texttt{README.md}, programming\\guide, getting started};
 % ---- Report ----
 \node[row] at (-0.15,-2.4) {Report \& demo};
-\node[chip=cOmk, minimum width=7.10cm] at (3.550,-2.4) {report text (all sections) and references\\\texttt{main.tex}, \texttt{references.bib}};
-\node[chip=cSak, minimum width=3.50cm] at (8.950,-2.4) {colour figures 1--5,\\README / report / Git review};
+\node[chip=cOmk, minimum width=3.50cm] at (1.750,-2.4) {report text and references\\\texttt{main.tex}, \texttt{references.bib}};
+\node[chip=cNip, minimum width=3.50cm] at (5.350,-2.4) {waveform (Fig.~5), conclusion,\\test-evidence log};
+\node[chip=cSak, minimum width=3.50cm] at (8.950,-2.4) {colour figures 1--4, 6,\\README / report / Git review};
 \node[chip=cSak, minimum width=3.50cm] at (12.550,-2.4) {example programs\\\texttt{programs/}, \texttt{make demo}};
 % ---- legend ----
 \draw[cNip!80!black, thick, fill=cNip!20] (0.30,-3.25) rectangle ++(0.25,0.2);
@@ -609,7 +647,9 @@ testbench sits directly below the RTL module it verifies.}
       instruction-set definitions header (\texttt{simd\_defs.vh}: opcodes,
       field positions, encoding macros), the lane ALU, the lane multiplexer,
       the vector ALU (\texttt{generate} loop of $L$ lanes) and the result
-      combiner with mask reduction.
+      combiner with mask reduction. Also the simulation-waveform figure
+      (Fig.~\ref{fig:wave}) and the script that draws it from the VCD, the
+      conclusion of this report, and the committed test-evidence log.
       \emph{Phase~II:} random-program verification.
 \item \textbf{Mohan Kumar C R} (\texttt{mohan101mk}) -- storage, control and
       integration RTL: the vector register file and scalar register, the vector
@@ -625,13 +665,13 @@ testbench sits directly below the RTL module it verifies.}
       \emph{Phase~II:} 8-lane scaling study.
 \item \textbf{Omkar Hadole} (\texttt{omkar-hadole}) -- project scaffolding,
       \texttt{Makefile} build and simulation flow, Yosys synthesis report,
-      all documentation in \texttt{docs/} and the README, and the text and
-      references of this IEEE report.
+      all documentation in \texttt{docs/} and the README, and the text of
+      this IEEE report (all sections up to the conclusion) and its references.
       \emph{Phase~II:} assembler.
 \item \textbf{Saksham Sharma} (\texttt{Saksham-9898}) -- report figures
-      (Figs.~\ref{fig:simdscalar}--\ref{fig:team}: scalar-versus-SIMD,
-      colour-coded datapath, instruction formats, verification flow and this
-      project map); the review that brought the README, the report and the
+      (Figs.~\ref{fig:simdscalar}--\ref{fig:verif} and~\ref{fig:team}:
+      scalar-versus-SIMD, colour-coded datapath, instruction formats,
+      verification flow and this project map); the review that brought the README, the report and the
       Git history into agreement; and the runnable example programs in
       \texttt{programs/} with the \texttt{make demo} target that checks them
       against the programming guide.
