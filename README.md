@@ -59,6 +59,7 @@ brew install icarus-verilog yosys      # Ubuntu/WSL: sudo apt install iverilog y
 make all_tests              # run every testbench (4 lanes x 8 bits)
 make all_tests LANES=8      # 8 lanes
 make all_tests LANES=1      # scalar baseline
+make demo                   # run the example programs in programs/
 make synth LANES=4          # synthesis report -> results/synth_L4_W8.txt
 ```
 
@@ -99,7 +100,7 @@ SIMD/
 ├── tb/                   self-checking testbenches, one per module
 ├── sim/                  simulation outputs (not in git)
 ├── results/              synthesis reports
-├── programs/             programs and assembler (Phase II)
+├── programs/             example programs (hex) and their runner; assembler in Phase II
 └── docs/                 documentation and the IEEE report
 ```
 
@@ -120,10 +121,12 @@ flowchart LR
 
 ## Team
 
-| Member | Responsible for |
-|---|---|
-| Nipun Patlori | Top-level integration (`simd_top`) and system verification; repository |
-| Anushka Tyagi | ALU datapath: lane ALU, vector ALU, reference model |
-| Mohan Kumar C R | Vector register file and lane MUX; literature review |
-| Omkar Hadole | Instruction-set specification, control unit, result combiner |
-| Saksham Sharma | Build and test infrastructure, synthesis, report assembly |
+Every row matches the commit history (`git shortlog -sn`) and Section IV / Fig. 5 of the [IEEE report](docs/report/main.pdf).
+
+| Member | GitHub | Files and work |
+|---|---|---|
+| Nipun Patlori | `nipun1803` | Datapath RTL: `simd_defs.vh` (ISA definitions), `lane_alu.v`, `lane_mux.v`, `vector_alu.v`, `result_combiner.v` |
+| Mohan Kumar C R | `mohan101mk` | Storage, control and integration RTL: `vector_regfile.v`, `vector_control.v`, `simd_top.v` |
+| Anushka Tyagi | `anu-ushka` | Verification: `tb_defs.v`, `ref_alu.vh` reference model and all nine testbenches in `tb/` |
+| Omkar Hadole | `omkar-hadole` | Scaffolding and `Makefile`, synthesis report, all of `docs/`, this README, IEEE report text and references |
+| Saksham Sharma | `Saksham-9898` | IEEE report figures 1–5 (colour diagrams), README / report / Git consistency review, example programs in `programs/` with `make demo` |
