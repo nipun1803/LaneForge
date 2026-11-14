@@ -33,7 +33,7 @@ module tb_lane_alu #(
     `include "ref_alu.vh"
 
     // ---- Checking -------------------------------------------------------------
-    integer errors = 0;
+    integer errors = 0, total_checks = 0;
     integer checks [16];
     integer fails  [16];
     string  names  [16];
@@ -111,10 +111,17 @@ module tb_lane_alu #(
         $display("  opcode   checks     fails   (WIDTH=%0d, %s)", WIDTH,
                  WIDTH <= 8 ? "exhaustive" : "random");
         $display("  -------  ---------  ------");
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 16; i++) begin
+            total_checks += checks[i];
+            if (checks[i] == 0) begin
+                $display("  coverage hole: opcode %s never exercised", names[i]);
+                errors++;
+            end
             if (checks[i] > 0)
                 $display("  %-7s  %9d  %6d  %s", names[i], checks[i], fails[i],
                          fails[i] == 0 ? "ok" : "<-- FAIL");
+        end
+        $display("  total checks: %0d", total_checks);
         $display("");
         if (errors == 0) $display("ALL PASS");
         else             $display("FAILED with %0d errors", errors);

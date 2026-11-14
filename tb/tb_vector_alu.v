@@ -37,7 +37,7 @@ module tb_vector_alu #(
     `include "ref_alu.vh"
 
     // ---- Bookkeeping ----------------------------------------------------------
-    integer errors = 0, printed = 0;
+    integer errors = 0, printed = 0, total_checks = 0;
     integer checks [16];
     integer fails  [16];
     string  names  [16];
@@ -150,16 +150,23 @@ module tb_vector_alu #(
         $display("  vector_alu  LANES=%0d  WIDTH=%0d  (%0d-bit vectors)", LANES, WIDTH, VW);
         $display("  opcode   checks  fails");
         $display("  -------  ------  -----");
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 16; i++) begin
+            total_checks += checks[i];
+            if (checks[i] == 0) begin
+                $display("  coverage hole: opcode %s never exercised", names[i]);
+                errors++;
+            end
             if (checks[i] > 0)
                 $display("  %-7s  %6d  %5d  %s", names[i], checks[i], fails[i],
                          fails[i] == 0 ? "ok" : "<-- FAIL");
+        end
         $write("  mask coverage (lane: seen 0/1): ");
         for (int i = 0; i < LANES; i++) begin
             if (mask_seen0[i] && mask_seen1[i]) $write("L%0d:ok ", i);
             else begin $write("L%0d:MISSING ", i); errors++; end
         end
         $display("\n");
+        $display("  total checks: %0d", total_checks);
         if (errors == 0) $display("ALL PASS");
         else             $display("FAILED with %0d errors", errors);
         $finish;

@@ -14,9 +14,9 @@
 //    P3 scalar      SLI / VBCAST, imm8 zero-extension
 //    P4 hazards     back-to-back dependent writes (VADD v1,v1,v1 chain)
 //    P5 mask        mask status follows compares only
-//    P6 no HALT     IMEM default (HALT) stops a program that forgot its HALT
+//    P6 no HALT     unused HALT slot stops a short program; a full image wraps
 //    P7 freeze      after HALT, 50 more cycles change nothing
-//    P8 reset       reset in the middle of a run, then a clean re-run
+//    P8 reset       reset before a pending store preserves memory, then re-run
 // -----------------------------------------------------------------------------
 `timescale 1ns/1ps
 `include "simd_defs.vh"
@@ -46,7 +46,7 @@ module tb_simd_top #(
         .halted(halted), .pc_out(pc_out),
         .cycle_count(cycle_count), .instr_count(instr_count), .lane_ops(lane_ops),
         .mask_status(mask_status),
-        .dbg_addr(dbg_addr), .dbg_rdata(dbg_rdata)
+        .dbg_addr(dbg_addr), .dbg_rdata(dbg_rdata), .instr_in(16'h0000)
     );
 
     always #5 clk = ~clk;
@@ -280,12 +280,26 @@ module tb_simd_top #(
         emit({`OP_HALT, 12'h000});
         run_test("P5 mask");
 
-        // P6: program without HALT stops at the IMEM default ---------------------------
+        // P6: a short program without HALT reaches an unused HALT-filled slot ---------
         prog_clear();
         emit(`ENC_M(`OP_VLD, 1, 7));
         emit(`ENC_R(`OP_VSUB, 2, 1, 1, 0));
         emit(`ENC_M(`OP_VST, 1, 70));
         run_test("P6 no-halt");
+
+        // With all slots overwritten by NOP, there is no implicit HALT left.
+        // Check a bounded run through the 8-bit PC wrap instead of waiting forever.
+        foreach (prog[i]) prog[i] = {`OP_NOP, 12'h000};
+        load_dut();
+        reset_dut();
+        repeat (NI + 2) @(posedge clk);
+        #1;
+        total_checks += 3;
+        if (halted !== 1'b0) fail("P6 full", "full NOP image unexpectedly halted");
+        if (pc_out !== 2) fail("P6 full", $sformatf("PC did not wrap to 2: %0d", pc_out));
+        if (cycle_count !== NI + 2 || instr_count !== NI + 2 || lane_ops !== 0)
+            fail("P6 full", "counters do not match the bounded NOP run");
+        $display("  P6 full    %4d slots  %4d cycles  PC=%0d (bounded wrap check)", NI, cycle_count, pc_out);
 
         // P7: frozen after HALT ------------------------------------------------------
         build_all_ops();
@@ -309,15 +323,31 @@ module tb_simd_top #(
         iss_run(MAXC);
         load_dut();
         reset_dut();
-        repeat (17) @(posedge clk);
+        // After six instructions, PC=6 holds VST v4, [33]. The preceding
+        // scalar VADD leaves lane 0 equal to 2, so this store would change memory.
+        repeat (6) @(posedge clk);
         #1;
+        total_checks++;
+        if (dut.instr[15:12] !== `OP_VST || dut.rdata2 === dut.dmem[dut.mem_addr])
+            fail("P8 reset", "test must interrupt a store that changes memory");
+        for (int a = 0; a < ND; a++) d0[a] = dut.dmem[a];
         @(negedge clk); rst = 1;
         @(posedge clk); #1;
-        total_checks += 5;
-        if (pc_out !== 0 || halted !== 0 || cycle_count !== 0 || lane_ops !== 0)
+        total_checks++;
+        if (pc_out !== 0 || halted !== 0 || cycle_count !== 0 || instr_count !== 0 || lane_ops !== 0)
             fail("P8 reset", $sformatf("after reset pc=%0d halted=%b cycles=%0d", pc_out, halted, cycle_count));
-        for (int r = 0; r < 8; r++)
+        for (int r = 0; r < 8; r++) begin
+            total_checks++;
             if (dut.u_rf.vregs[r] !== '0) fail("P8 reset", $sformatf("v%0d not cleared", r));
+        end
+        total_checks += 2;
+        if (dut.u_rf.sreg !== '0) fail("P8 reset", "scalar not cleared");
+        if (mask_status !== '0) fail("P8 reset", "mask status not cleared");
+        for (int a = 0; a < ND; a++) begin
+            total_checks++;
+            if (dut.dmem[a] !== d0[a])
+                fail("P8 reset", $sformatf("DMEM[%0d] changed on the reset edge", a));
+        end
         @(negedge clk); rst = 0;
         run_dut(edges);
         compare_state("P8 reset");

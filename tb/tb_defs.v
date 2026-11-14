@@ -12,9 +12,10 @@ module tb_defs #(
     parameter LANES = 4,
     parameter WIDTH = 8
 );
-    integer errors = 0;
+    integer errors = 0, checks = 0;
 
     task automatic check(input bit cond, input string msg);
+        checks++;
         if (!cond) begin
             $display("FAIL: %s", msg);
             errors++;
@@ -80,9 +81,10 @@ module tb_defs #(
         check((1 << `VREG_AW) == `NUM_VREGS,  "VREG_AW vs NUM_VREGS");
         check((1 << `IMEM_AW) == `IMEM_DEPTH, "IMEM_AW vs IMEM_DEPTH");
         check((1 << `DMEM_AW) == `DMEM_DEPTH, "DMEM_AW vs DMEM_DEPTH");
-        check(WIDTH >= 2 && (WIDTH & (WIDTH - 1)) == 0,
-              "WIDTH must be a power of two (shift amount uses log2)");
+        check(WIDTH >= 2 && WIDTH <= 16 && (WIDTH & (WIDTH - 1)) == 0,
+              "Supported WIDTH values are 2, 4, 8 and 16 (power-of-two shifts; bounded reference model)");
 
+        $display("  total checks: %0d", checks);
         if (errors == 0) $display("ALL PASS");
         else             $display("FAILED with %0d errors", errors);
         $finish;

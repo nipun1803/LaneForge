@@ -38,7 +38,7 @@ module tb_result_combiner #(
     );
 
     // ---- Checking -------------------------------------------------------------
-    integer errors = 0, printed = 0;
+    integer errors = 0, printed = 0, total_checks = 0;
     integer sec_checks [NSEC];
     string  sec_names  [NSEC];
     integer sel_hits   [4];          // coverage: each wb_sel value exercised
@@ -140,8 +140,14 @@ module tb_result_combiner #(
         // ---- Report --------------------------------------------------------------
         $display("");
         $display("  result_combiner  LANES=%0d  WIDTH=%0d", LANES, WIDTH);
-        for (int i = 0; i < NSEC; i++)
+        for (int i = 0; i < NSEC; i++) begin
             $display("  %-12s %6d checks", sec_names[i], sec_checks[i]);
+            total_checks += sec_checks[i];
+            if (sec_checks[i] == 0) begin
+                $display("  coverage hole: section %s never exercised", sec_names[i]);
+                errors++;
+            end
+        end
         $display("  wb_sel coverage: ALU=%0d MEM=%0d BCAST=%0d RSVD=%0d",
                  sel_hits[0], sel_hits[1], sel_hits[2], sel_hits[3]);
         foreach (sel_hits[i]) if (sel_hits[i] == 0) begin
@@ -149,6 +155,7 @@ module tb_result_combiner #(
             errors++;
         end
         $display("");
+        $display("  total checks: %0d", total_checks);
         if (errors == 0) $display("ALL PASS");
         else             $display("FAILED with %0d errors", errors);
         $finish;

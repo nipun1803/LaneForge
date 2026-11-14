@@ -194,9 +194,15 @@ module tb_vector_regfile #(
         $display("");
         $display("  vector_regfile  LANES=%0d  WIDTH=%0d  (%0d x %0d-bit + %0d-bit scalar)",
                  LANES, WIDTH, NR, VW, WIDTH);
-        for (int i = 0; i < NSEC; i++)
+        for (int i = 0; i < NSEC; i++) begin
             $display("  %-12s %6d checks", sec_names[i], sec_checks[i]);
+            if (sec_checks[i] == 0) begin
+                $display("  coverage hole: section %s never exercised", sec_names[i]);
+                errors++;
+            end
+        end
         $display("  total        %6d checks, %0d errors", checks, errors);
+        $display("  total checks: %0d", checks);
         $display("");
         if (errors == 0) $display("ALL PASS");
         else             $display("FAILED with %0d errors", errors);

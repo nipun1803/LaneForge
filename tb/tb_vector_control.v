@@ -7,7 +7,8 @@
 //     1. enables       : rf_we, mem_we, s_we, mask_we, halt, wb_sel
 //     2. ALU control   : alu_op (NOP for non-ALU), sel_scalar (= s bit for ALU)
 //     3. addresses     : raddr1/raddr2/waddr/mem_addr/s_imm where they matter
-//     4. invariant     : at most one architectural write per instruction
+//     4. invariant     : at most one data destination (rf_we, mem_we, s_we)
+//                        compares additionally update mask status via mask_we
 //
 //   The reference is a per-opcode table (data), not a case statement (code),
 //   so it is written differently from the RTL.
@@ -52,7 +53,7 @@ module tb_vector_control #(
     endtask
 
     // ---- Bookkeeping ----------------------------------------------------------
-    integer errors = 0, printed = 0;
+    integer errors = 0, printed = 0, total_checks = 0;
     integer op_checks [16];
     integer op_fails  [16];
 
@@ -136,7 +137,7 @@ module tb_vector_control #(
             if ((o == `OP_VLD || o == `OP_VST) && mem_addr !== instr[`F_ADDR]) fail("mem_addr != addr");
             if (o == `OP_SLI && s_imm !== instr[`F_IMM8]) fail("s_imm != imm8");
 
-            // 4. At most one architectural write per instruction
+            // 4. At most one data destination; mask_we is checked separately above
             writes = rf_we + mem_we + s_we;
             if (writes > 1) fail($sformatf("%0d simultaneous writes", writes));
         end
@@ -146,9 +147,16 @@ module tb_vector_control #(
         $display("  vector_control  (exhaustive: all 65536 instruction words)");
         $display("  opcode   decoded  fails");
         $display("  -------  -------  -----");
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 16; i++) begin
+            total_checks += op_checks[i];
             $display("  %-7s  %7d  %5d  %s", names[i], op_checks[i], op_fails[i],
                      op_fails[i] == 0 ? "ok" : "<-- FAIL");
+            if (op_checks[i] != 4096) begin
+                $display("  coverage hole: opcode %s decoded %0d times, expected 4096", names[i], op_checks[i]);
+                errors++;
+            end
+        end
+        $display("  total checks: %0d", total_checks);
         $display("");
         if (errors == 0) $display("ALL PASS");
         else             $display("FAILED with %0d errors", errors);

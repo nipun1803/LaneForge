@@ -33,7 +33,8 @@ module run_programs;
             .clk(clk), .rst(rst), .halted(halted_``name), .pc_out(pc_``name), \
             .cycle_count(cyc_``name), .instr_count(ins_``name),               \
             .lane_ops(ops_``name), .mask_status(mask_``name),                 \
-            .dbg_addr(addr_``name), .dbg_rdata(data_``name));
+            .dbg_addr(addr_``name), .dbg_rdata(data_``name),                  \
+            .instr_in(16'h0000));
 
     `PROG(add,       "programs/add.hex",       "programs/add_data.hex")
     `PROG(add_const, "programs/add_const.hex", "programs/add_const_data.hex")
@@ -52,7 +53,7 @@ module run_programs;
     endtask
 
     // Optional waveform of the vector-add program: +vcd=<file>
-    // (make demo writes sim/run_programs.vcd; scripts/vcd_to_tikz.py draws Fig. 6)
+    // (make demo writes sim/run_programs.vcd; scripts/vcd_to_tikz.py draws Fig. 5)
     reg [8*128-1:0] vcd_file;
     initial
         if ($value$plusargs("vcd=%s", vcd_file)) begin

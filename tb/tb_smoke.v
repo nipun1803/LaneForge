@@ -22,18 +22,19 @@ module tb_smoke #(
         $dumpfile(vcd_file);
         $dumpvars(0, tb_smoke);
 
-        // Fill each lane with its own index, then check the slicing
+        // Fill each lane with its index modulo 2^WIDTH, then check the slicing.
         for (int i = 0; i < LANES; i++)
             vec[i*WIDTH +: WIDTH] = i;
         @(posedge clk);
 
         for (int i = 0; i < LANES; i++)
-            if (vec[i*WIDTH +: WIDTH] !== i) begin
+            if (vec[i*WIDTH +: WIDTH] !== WIDTH'(i)) begin
                 $display("FAIL: lane %0d = %0d", i, vec[i*WIDTH +: WIDTH]);
                 errors++;
             end
 
         $display("LANES=%0d WIDTH=%0d vector=%h", LANES, WIDTH, vec);
+        $display("  total checks: %0d", LANES);
         if (errors == 0) $display("ALL PASS");
         else             $display("FAILED with %0d errors", errors);
         $finish;

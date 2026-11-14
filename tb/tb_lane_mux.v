@@ -33,7 +33,7 @@ module tb_lane_mux #(
     );
 
     // ---- Checking -------------------------------------------------------------
-    integer errors = 0, printed = 0;
+    integer errors = 0, printed = 0, total_checks = 0;
     integer sec_checks [NSEC];
     string  sec_names  [NSEC];
 
@@ -111,8 +111,15 @@ module tb_lane_mux #(
         // ---- Report --------------------------------------------------------------
         $display("");
         $display("  lane_mux  LANES=%0d  WIDTH=%0d", LANES, WIDTH);
-        for (int i = 0; i < NSEC; i++)
+        for (int i = 0; i < NSEC; i++) begin
             $display("  %-12s %6d checks", sec_names[i], sec_checks[i]);
+            total_checks += sec_checks[i];
+            if (sec_checks[i] == 0) begin
+                $display("  coverage hole: section %s never exercised", sec_names[i]);
+                errors++;
+            end
+        end
+        $display("  total checks: %0d", total_checks);
         $display("");
         if (errors == 0) $display("ALL PASS");
         else             $display("FAILED with %0d errors", errors);

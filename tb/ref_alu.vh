@@ -2,8 +2,8 @@
 // ref_alu.vh - golden reference model for ONE lane (shared by testbenches)
 // -----------------------------------------------------------------------------
 //  `include this INSIDE a testbench module that defines:
-//      parameter WIDTH
-//      localparam longint MOD  = 1 << WIDTH
+//      parameter WIDTH (supported project widths: 2, 4, 8, 16)
+//      localparam longint MOD  = longint'(1) << WIDTH
 //      localparam longint HALF = MOD >> 1
 //
 //  Written with integer arithmetic (mod 2^WIDTH, explicit two's-complement
@@ -19,6 +19,10 @@ endfunction
 function automatic longint ref_alu(input logic [3:0] o, input longint ua, input longint ub);
     longint r, sh;
     bit     f;
+    // Match the WIDTH-bit input ports before arithmetic and signed conversion.
+    // Directed tests may supply wider constants (or signed integer values).
+    ua = ((ua % MOD) + MOD) % MOD;
+    ub = ((ub % MOD) + MOD) % MOD;
     f  = 0;
     sh = ub % WIDTH;                             // low log2(WIDTH) bits of b
     case (o)
