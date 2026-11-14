@@ -10,7 +10,23 @@
 \usepackage{booktabs}
 \usepackage{url}
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,fit,calc}
+\usetikzlibrary{positioning,arrows.meta,fit,calc,backgrounds}
+
+% ---- figure palette (shared by all diagrams) ----
+\definecolor{cFetch}{HTML}{2E6FD8}   % fetch / control  - blue
+\definecolor{cStore}{HTML}{1E9E6A}   % storage          - green
+\definecolor{cSel}{HTML}{0FA3B1}     % operand select   - teal
+\definecolor{cComp}{HTML}{E8772E}    % compute lanes    - orange
+\definecolor{cWB}{HTML}{8E44AD}      % write-back       - purple
+\definecolor{cMem}{HTML}{5D6D7E}     % memory           - slate
+\definecolor{cPass}{HTML}{27AE60}
+\definecolor{cFail}{HTML}{D64541}
+% ---- member colours (Fig. 5) ----
+\definecolor{cNip}{HTML}{E8772E}
+\definecolor{cMoh}{HTML}{1E9E6A}
+\definecolor{cAnu}{HTML}{2E6FD8}
+\definecolor{cOmk}{HTML}{8E44AD}
+\definecolor{cSak}{HTML}{D63384}
 
 
 \begin{document}
@@ -60,7 +76,57 @@ Multiple Data} (SIMD): one instruction stream controls several processing
 elements, each working on its own data element. Compared with issuing one scalar
 instruction per element, SIMD reduces instruction fetch and decode overhead and
 increases throughput roughly in proportion to the number of parallel
-lanes~\cite{hennessy2017}.
+lanes~\cite{hennessy2017}. Fig.~\ref{fig:simdscalar} illustrates the difference
+for a four-element addition.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+    font=\scriptsize,
+    ins/.style={draw=cFetch!80!black, fill=cFetch!18, rounded corners=1.5pt,
+                minimum width=15mm, minimum height=4.2mm, align=center},
+    el/.style={draw=cStore!80!black, fill=cStore!15, minimum width=5.2mm, minimum height=4.2mm},
+    res/.style={draw=cWB!80!black, fill=cWB!15, minimum width=5.2mm, minimum height=4.2mm},
+    alu/.style={draw=cComp!80!black, fill=cComp!25, circle, inner sep=0.6pt, font=\tiny\bfseries},
+    arr/.style={-{Latex[length=1.3mm]}, thick, gray!60!black}
+]
+% ---------- scalar side ----------
+\node[font=\footnotesize\bfseries, text=cFail!85!black] at (1.3,1.05) {Scalar: 4 instructions};
+\foreach \i/\c in {0/1,1/2,2/3,3/4} {
+  \node[ins] (si\i) at (0.4,-\i*0.62) {\texttt{ADD} c[\i]};
+  \node[alu] (sa\i) at (1.75,-\i*0.62) {+};
+  \node[res] (sr\i) at (2.45,-\i*0.62) {c\textsubscript{\i}};
+  \draw[arr] (si\i) -- (sa\i);
+  \draw[arr] (sa\i) -- (sr\i);
+  \node[font=\tiny, text=gray!70!black] at (3.05,-\i*0.62) {t=\c};
+}
+% ---------- SIMD side ----------
+\begin{scope}[xshift=4.3cm]
+\node[font=\footnotesize\bfseries, text=cPass!75!black] at (1.25,1.05) {SIMD: 1 instruction};
+\node[ins, minimum width=26mm] (vi) at (1.25,0.45) {\texttt{VADD v3, v1, v2}};
+\foreach \i in {0,1,2,3} {
+  \node[el]  (a\i) at (\i*0.75+0.12,-0.25) {a\textsubscript{\i}};
+  \node[el]  (b\i) at (\i*0.75+0.12,-0.75) {b\textsubscript{\i}};
+  \node[alu] (x\i) at (\i*0.75+0.12,-1.3) {+};
+  \node[res] (r\i) at (\i*0.75+0.12,-1.85) {c\textsubscript{\i}};
+  \draw[arr] (b\i) -- (x\i);
+  \draw[arr] (x\i) -- (r\i);
+}
+\node[font=\tiny, text=gray!70!black, anchor=west] at (2.75,-1.3) {t=1};
+\begin{scope}[on background layer]
+\node[draw=cComp!70!black, dashed, rounded corners=2pt, fill=cComp!6,
+      fit=(a0)(r3), inner sep=1.4mm] (lanes) {};
+\end{scope}
+\draw[arr, cFetch!80!black] (vi.south) -- (lanes.north);
+\node[font=\tiny, text=cComp!70!black] at (1.25,-2.45) {4 lanes, one shared opcode};
+\end{scope}
+\end{tikzpicture}
+\caption{Scalar versus SIMD execution of $c_i = a_i + b_i$ for four elements.
+The scalar core fetches and decodes four instructions over four cycles; the
+SIMD unit issues one \texttt{VADD} whose opcode drives four lane ALUs in a
+single cycle.}
+\label{fig:simdscalar}
+\end{figure}
 
 This project designs a small SIMD unit to study that trade-off directly in
 hardware. The goals are to
@@ -151,32 +217,39 @@ through every module; the scalar baseline is the same RTL with $L=1$.
     font=\footnotesize,
     blk/.style={draw, thick, rounded corners=2pt, align=center, minimum height=9mm,
                 fill=white},
-    lane/.style={draw, align=center, minimum width=17mm, minimum height=5mm,
-                 fill=gray!12},
+    fetch/.style={blk, draw=cFetch!80!black, fill=cFetch!15},
+    stor/.style={blk, draw=cStore!80!black, fill=cStore!15},
+    sel/.style={blk, draw=cSel!80!black, fill=cSel!15},
+    wb/.style={blk, draw=cWB!80!black, fill=cWB!15},
+    mem/.style={blk, draw=cMem!80!black, fill=cMem!15},
+    lane/.style={draw=cComp!80!black, align=center, minimum width=17mm, minimum height=5mm,
+                 fill=cComp!22},
     dat/.style={-{Latex[length=2mm]}, thick},
-    ctl/.style={-{Latex[length=1.6mm]}, densely dashed, gray!60!black},
+    ctl/.style={-{Latex[length=1.6mm]}, densely dashed, cFetch!85!black},
     lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}
 ]
 % ---- top row: fetch and decode ----
-\node[blk, minimum width=20mm] (pc)   at (0,0)    {PC, HALT\\counters};
-\node[blk, minimum width=22mm] (imem) at (3.2,0)  {Instruction\\memory $256{\times}16$};
-\node[blk, minimum width=30mm] (ctrl) at (7.6,0)  {\textbf{Vector Control Unit}\\(decoder)};
+\node[fetch, minimum width=20mm] (pc)   at (0,0)    {PC, HALT\\counters};
+\node[mem, minimum width=22mm] (imem) at (3.2,0)  {Instruction\\memory $256{\times}16$};
+\node[fetch, minimum width=30mm] (ctrl) at (7.6,0)  {\textbf{Vector Control Unit}\\(decoder)};
 
 % ---- datapath row ----
-\node[blk, minimum width=26mm, minimum height=16mm] (rf) at (1.2,-3.0)
+\node[stor, minimum width=26mm, minimum height=16mm] (rf) at (1.2,-3.0)
       {\textbf{Vector Register File}\\$8 \times L{\cdot}W$, 2R / 1W\\+ scalar register};
-\node[blk, minimum width=16mm] (mux) at (4.7,-3.65) {\textbf{Lane MUX}\\vs2 / bcast};
+\node[sel, minimum width=16mm] (mux) at (4.7,-3.65) {\textbf{Lane MUX}\\vs2 / bcast};
 
 \node[lane] (l0) at (8.1,-2.35) {Lane ALU 0};
 \node[lane, below=1mm of l0] (l1) {Lane ALU 1};
 \node[below=0mm of l1, inner sep=1pt] (ld) {$\vdots$};
 \node[lane, below=0mm of ld] (l3) {Lane ALU $L{-}1$};
-\node[draw, thick, rounded corners=2pt, fit=(l0)(l3), inner sep=2mm,
-      label={[font=\scriptsize, anchor=south east]north east:\textbf{Vector ALU}}] (valu) {};
+\begin{scope}[on background layer]
+\node[draw=cComp!80!black, thick, rounded corners=2pt, fill=cComp!7, fit=(l0)(l3), inner sep=2mm,
+      label={[font=\scriptsize, text=cComp!70!black, anchor=south east]north east:\textbf{Vector ALU}}] (valu) {};
+\end{scope}
 
-\node[blk, minimum width=22mm, minimum height=14mm] (rc) at (11.5,-3.0)
+\node[wb, minimum width=22mm, minimum height=14mm] (rc) at (11.5,-3.0)
       {\textbf{Result}\\\textbf{Combiner}\\WB select, mask};
-\node[blk, minimum width=20mm, minimum height=14mm] (dmem) at (15.0,-3.0)
+\node[mem, minimum width=20mm, minimum height=14mm] (dmem) at (15.0,-3.0)
       {Data memory\\$512 \times L{\cdot}W$};
 
 % ---- data paths ----
@@ -214,9 +287,11 @@ through every module; the scalar baseline is the same RTL with $L=1$.
            (rc.north);
 \draw[ctl] (ctrl.east) -| node[lbl, pos=0.75, right]{mem\_we, addr} (dmem.north);
 \end{tikzpicture}
-\caption{Datapath of the SIMD vector unit. Solid arrows carry data, dashed arrows
-carry control. The only signal shared by all lanes is the decoded opcode
-(\texttt{alu\_op}).}
+\caption{Datapath of the SIMD vector unit, coloured by function: fetch and
+control (blue), storage (green), operand select (teal), parallel compute
+(orange), write-back (purple) and memories (grey). Solid arrows carry data,
+dashed blue arrows carry control. The only signal shared by all lanes is the
+decoded opcode (\texttt{alu\_op}).}
 \label{fig:block}
 \end{figure*}
 
@@ -245,7 +320,7 @@ Three design choices make the top level robust and measurable:
 \end{itemize}
 % -----------------------------------------------------------------------------
 \subsection{Instruction set}
-Instructions are 16 bits wide in three formats (Table~\ref{tab:fmt}). R-type
+Instructions are 16 bits wide in three formats (Fig.~\ref{fig:fmt}). R-type
 instructions include an $s$ bit that replaces \texttt{vs2} with the broadcast
 scalar, so an operation such as ``add $k$ to every element'' needs only one
 instruction, as in the vector-scalar forms of Neon and RISC-V~V. Table~\ref{tab:isa}
@@ -254,21 +329,41 @@ positions and sizes are defined once in a shared header, \texttt{simd\_defs.vh},
 which is itself checked by a testbench for unique opcodes and non-overlapping
 fields.
 
-\begin{table}[t]
+\begin{figure}[t]
 \centering
-\caption{Instruction formats}
-\label{tab:fmt}
-\footnotesize
-\begin{tabular}{@{}lccccc@{}}
-\toprule
- & [15:12] & [11:9] & [8:6] & [5:3] & [2] \\
-\midrule
-R-type & opcode & vd   & vs1 & vs2 & $s$ \\
-M-type & opcode & vreg & \multicolumn{3}{c}{addr[8:0]} \\
-S-type & opcode & --   & \multicolumn{3}{c}{imm8[7:0]} \\
-\bottomrule
-\end{tabular}
-\end{table}
+\begin{tikzpicture}[x=4.15mm, y=6mm, font=\scriptsize]
+% field(row, msb, lsb, colour, text)
+\newcommand{\fld}[5]{%
+  \fill[#4!22] ({15-#2},{-#1}) rectangle ({16-#3},{-#1-0.85});
+  \draw[#4!75!black, thick] ({15-#2},{-#1}) rectangle ({16-#3},{-#1-0.85});
+  \node at ({(31-#2-#3)/2},{-#1-0.425}) {#5};}
+% bit numbers
+\foreach \b in {15,12,11,9,8,6,5,3,2,0}
+  \node[font=\tiny, text=gray!70!black] at ({15.5-\b},0.35) {\b};
+% R-type
+\node[anchor=east, font=\scriptsize\bfseries] at (-0.2,-0.425) {R};
+\fld{0}{15}{12}{cFetch}{opcode}
+\fld{0}{11}{9}{cWB}{vd}
+\fld{0}{8}{6}{cStore}{vs1}
+\fld{0}{5}{3}{cStore}{vs2}
+\fld{0}{2}{2}{cSel}{$s$}
+\fld{0}{1}{0}{gray}{--}
+% M-type
+\node[anchor=east, font=\scriptsize\bfseries] at (-0.2,-1.425) {M};
+\fld{1}{15}{12}{cFetch}{opcode}
+\fld{1}{11}{9}{cWB}{vreg}
+\fld{1}{8}{0}{cMem}{addr[8:0] (512 words)}
+% S-type
+\node[anchor=east, font=\scriptsize\bfseries] at (-0.2,-2.425) {S};
+\fld{2}{15}{12}{cFetch}{opcode}
+\fld{2}{11}{8}{gray}{0000}
+\fld{2}{7}{0}{cComp}{imm8[7:0]}
+\end{tikzpicture}
+\caption{16-bit instruction formats. R-type: vector ALU operations and
+\texttt{VBCAST}; $s=1$ replaces \texttt{vs2} with the broadcast scalar.
+M-type: \texttt{VLD}/\texttt{VST}. S-type: \texttt{SLI}. Grey fields are zero.}
+\label{fig:fmt}
+\end{figure}
 
 \begin{table}[t]
 \centering
@@ -359,7 +454,44 @@ architectural state (all 512 memory words, all registers, the scalar, the mask,
 the PC and every counter) is compared with an instruction-set reference model
 that executes the same program. Faults were deliberately injected into the RTL
 to show that each test catches the class of bug it targets.
-Table~\ref{tab:ver} summarises the results.
+Fig.~\ref{fig:verif} shows the flow and Table~\ref{tab:ver} summarises the
+results.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+    font=\scriptsize,
+    box/.style={draw, thick, rounded corners=2pt, align=center, inner sep=2pt,
+                minimum height=8mm},
+    arr/.style={-{Latex[length=1.6mm]}, thick, gray!60!black}
+]
+\node[box, draw=cFetch!80!black, fill=cFetch!15, minimum width=15mm] (stim) at (0,0)
+     {\textbf{Stimulus}\\exhaustive\\directed, random};
+\node[box, draw=cComp!80!black, fill=cComp!18, minimum width=19mm] (dut) at (2.65,0.75)
+     {\textbf{DUT}\\Verilog RTL};
+\node[box, draw=cStore!80!black, fill=cStore!15, minimum width=19mm] (ref) at (2.65,-0.75)
+     {\textbf{Reference}\\ALU / ISA model};
+\node[box, draw=cWB!80!black, fill=cWB!15, minimum width=12mm] (cmp) at (4.75,0)
+     {\textbf{Compare}\\bit-exact};
+\node[box, draw=cPass!80!black, fill=cPass!22, minimum width=10mm, minimum height=6mm]
+     (pass) at (6.35,0.55) {\textbf{PASS}};
+\node[box, draw=cFail!80!black, fill=cFail!18, minimum width=10mm, minimum height=6mm]
+     (fail) at (6.35,-0.55) {\textbf{FAIL}\\+ log};
+\node[box, draw=cFail!70!black, dashed, fill=cFail!6, minimum height=5mm]
+     (inj) at (2.65,1.85) {fault injection (23 mutants)};
+\draw[arr] (stim.east) -- (1.15,0) |- (dut.west);
+\draw[arr] (stim.east) -- (1.15,0) |- (ref.west);
+\draw[arr] (dut.east) -| (cmp.north);
+\draw[arr] (ref.east) -| (cmp.south);
+\draw[arr] (cmp.east) -- (5.6,0) |- (pass.west);
+\draw[arr] (cmp.east) -- (5.6,0) |- (fail.west);
+\draw[arr, dashed, cFail!80!black] (inj) -- (dut);
+\end{tikzpicture}
+\caption{Self-checking verification flow used by every testbench. The same
+stimulus drives the RTL and an independent reference model; any mismatch is
+logged as a failure. Injected faults confirm that the checks catch real bugs.}
+\label{fig:verif}
+\end{figure}
 
 \begin{table}[t]
 \centering
@@ -409,35 +541,100 @@ quantify the area cost of parallelism.
 
 % -----------------------------------------------------------------------------
 \section{Individual Contributions}
-The work is divided equally: each member owns one part of the hardware with its
-testbenches, writes the corresponding report section(s), and leads one of the
-remaining Phase~II tasks. Ownership is reflected file by file in the project's
-Git history.
+Work was split by layer: RTL design, verification, build and documentation, and
+the report. Every item below can be traced to commits in the project's Git
+repository under the GitHub username shown in brackets, and
+Fig.~\ref{fig:team} maps each file to the member who wrote it.
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+    font=\tiny,
+    chip/.style={draw=#1!80!black, fill=#1!20, thick, rounded corners=1.5pt,
+                 minimum height=6mm, align=center, inner sep=1pt},
+    code/.style={chip=#1, font=\tiny\ttfamily, minimum width=17mm},
+    row/.style={font=\scriptsize\bfseries, anchor=east, align=right}
+]
+% ---- RTL ----
+\node[row] at (-0.15,0) {RTL};
+\node[code=cNip] (r0) at (0.850,0) {simd\_defs.vh};
+\node[code=cNip] (r1) at (2.650,0) {lane\_alu.v};
+\node[code=cNip] (r2) at (4.450,0) {lane\_mux.v};
+\node[code=cNip] (r3) at (6.250,0) {vector\_alu.v};
+\node[code=cNip] (r4) at (8.050,0) {result\_\\combiner.v};
+\node[code=cMoh] (r5) at (9.850,0) {vector\_\\regfile.v};
+\node[code=cMoh] (r6) at (11.650,0) {vector\_\\control.v};
+\node[code=cMoh] (r7) at (13.450,0) {simd\_top.v};
+% ---- Verification ----
+\node[row] at (-0.15,-0.8) {Verification};
+\node[code=cAnu] (t0) at (0.850,-0.8) {tb\_defs.v\\ref\_alu.vh};
+\node[code=cAnu] (t1) at (2.650,-0.8) {tb\_lane\_\\alu.v};
+\node[code=cAnu] (t2) at (4.450,-0.8) {tb\_lane\_\\mux.v};
+\node[code=cAnu] (t3) at (6.250,-0.8) {tb\_vector\_\\alu.v};
+\node[code=cAnu] (t4) at (8.050,-0.8) {tb\_result\_\\combiner.v};
+\node[code=cAnu] (t5) at (9.850,-0.8) {tb\_vector\_\\regfile.v};
+\node[code=cAnu] (t6) at (11.650,-0.8) {tb\_vector\_\\control.v};
+\node[code=cAnu] (t7) at (13.450,-0.8) {tb\_simd\_top.v\\tb\_smoke.v};
+\foreach \i in {0,...,7} \draw[gray!55, densely dotted] (r\i.south) -- (t\i.north);
+% ---- Build & docs ----
+\node[row] at (-0.15,-1.6) {Build \& docs};
+\node[chip=cOmk, minimum width=3.50cm] at (1.750,-1.6) {\texttt{Makefile}, scaffolding,\\Yosys synthesis report};
+\node[chip=cOmk, minimum width=3.50cm] at (5.350,-1.6) {architecture, ISA,\\SIMD concept docs};
+\node[chip=cOmk, minimum width=3.50cm] at (8.950,-1.6) {module, control, top-level,\\verification docs};
+\node[chip=cOmk, minimum width=3.50cm] at (12.550,-1.6) {\texttt{README.md}, programming\\guide, getting started};
+% ---- Report ----
+\node[row] at (-0.15,-2.4) {Report \& demo};
+\node[chip=cOmk, minimum width=7.10cm] at (3.550,-2.4) {report text (all sections) and references\\\texttt{main.tex}, \texttt{references.bib}};
+\node[chip=cSak, minimum width=3.50cm] at (8.950,-2.4) {colour figures 1--5,\\README / report / Git review};
+\node[chip=cSak, minimum width=3.50cm] at (12.550,-2.4) {example programs\\\texttt{programs/}, \texttt{make demo}};
+% ---- legend ----
+\draw[cNip!80!black, thick, fill=cNip!20] (0.30,-3.25) rectangle ++(0.25,0.2);
+\node[anchor=west, font=\scriptsize] at (0.60,-3.15) {Nipun Patlori (nipun1803)};
+\draw[cMoh!80!black, thick, fill=cMoh!20] (4.90,-3.25) rectangle ++(0.25,0.2);
+\node[anchor=west, font=\scriptsize] at (5.20,-3.15) {Mohan Kumar C R (mohan101mk)};
+\draw[cAnu!80!black, thick, fill=cAnu!20] (10.20,-3.25) rectangle ++(0.25,0.2);
+\node[anchor=west, font=\scriptsize] at (10.50,-3.15) {Anushka Tyagi (anu-ushka)};
+\draw[cOmk!80!black, thick, fill=cOmk!20] (2.60,-3.65) rectangle ++(0.25,0.2);
+\node[anchor=west, font=\scriptsize] at (2.90,-3.55) {Omkar Hadole (omkar-hadole)};
+\draw[cSak!80!black, thick, fill=cSak!20] (7.60,-3.65) rectangle ++(0.25,0.2);
+\node[anchor=west, font=\scriptsize] at (7.90,-3.55) {Saksham Sharma (Saksham-9898)};
+\end{tikzpicture}
+\caption{Project map coloured by author, taken from the Git history. Each
+testbench sits directly below the RTL module it verifies.}
+\label{fig:team}
+\end{figure*}
 
 \begin{itemize}
-\item \textbf{Nipun Patlori} -- top-level integration (\texttt{simd\_top}:
-      instruction and data memories, program counter, \texttt{HALT} handling,
-      performance counters, debug port) and its instruction-set reference-model
-      testbench; repository maintenance, README and architecture documentation;
-      report section on architecture and integration.
+\item \textbf{Nipun Patlori} (\texttt{nipun1803}) -- datapath RTL: the shared
+      instruction-set definitions header (\texttt{simd\_defs.vh}: opcodes,
+      field positions, encoding macros), the lane ALU, the lane multiplexer,
+      the vector ALU (\texttt{generate} loop of $L$ lanes) and the result
+      combiner with mask reduction.
       \emph{Phase~II:} random-program verification.
-\item \textbf{Anushka Tyagi} -- lane ALU and vector ALU RTL, the shared ALU
-      reference model, the exhaustive lane-ALU testbench and the lane-isolation
-      testbench; abstract and the ALU report section.
-      \emph{Phase~II:} 8-lane scaling study.
-\item \textbf{Mohan Kumar C R} -- vector register file and lane multiplexer RTL
-      and testbenches (read-during-write, port independence, broadcast);
-      literature review and the storage report section.
+\item \textbf{Mohan Kumar C R} (\texttt{mohan101mk}) -- storage, control and
+      integration RTL: the vector register file and scalar register, the vector
+      control unit (instruction decoder), and the top level \texttt{simd\_top}
+      (instruction and data memories, program counter, \texttt{HALT} handling,
+      performance counters, debug read port).
       \emph{Phase~II:} FPGA resource utilisation and maximum frequency.
-\item \textbf{Omkar Hadole} -- instruction-set specification
-      (\texttt{simd\_defs.vh}), vector control unit and result combiner RTL, the
-      exhaustive decoder testbench and the result-combiner testbench; ISA
-      documentation and report section.
+\item \textbf{Anushka Tyagi} (\texttt{anu-ushka}) -- the complete verification
+      suite: shared testbench definitions, the independent ALU reference model,
+      and the nine self-checking testbenches, including the exhaustive
+      lane-ALU and decoder tests, the lane-isolation test and the top-level
+      test against an instruction-set reference model.
+      \emph{Phase~II:} 8-lane scaling study.
+\item \textbf{Omkar Hadole} (\texttt{omkar-hadole}) -- project scaffolding,
+      \texttt{Makefile} build and simulation flow, Yosys synthesis report,
+      all documentation in \texttt{docs/} and the README, and the text and
+      references of this IEEE report.
       \emph{Phase~II:} assembler.
-\item \textbf{Saksham Sharma} -- build and simulation infrastructure (Makefile,
-      pass/fail reporting, parameter sweeps), synthesis flow, verification and
-      development-log documentation; introduction, verification section,
-      references and report assembly.
+\item \textbf{Saksham Sharma} (\texttt{Saksham-9898}) -- report figures
+      (Figs.~\ref{fig:simdscalar}--\ref{fig:team}: scalar-versus-SIMD,
+      colour-coded datapath, instruction formats, verification flow and this
+      project map); the review that brought the README, the report and the
+      Git history into agreement; and the runnable example programs in
+      \texttt{programs/} with the \texttt{make demo} target that checks them
+      against the programming guide.
       \emph{Phase~II:} scalar-versus-SIMD benchmarks.
 \end{itemize}
 
