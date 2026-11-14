@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw Fig. 6 of the report (vector-add waveform) from a real simulation VCD.
+"""Draw Fig. 5 of the report (vector-add waveform) from a real simulation VCD.
 
     make demo                                   # writes sim/run_programs.vcd
     python3 scripts/vcd_to_tikz.py sim/run_programs.vcd docs/report/fig_waveform.tex

@@ -1,0 +1,43 @@
+# LaneForge reproducible verification evidence
+# Generated (UTC): 2026-11-14T21:11:40+00:00
+# Tool: Icarus Verilog version 13.0 (stable) (v13_0)
+# Mode: matrix; per-command timeout: 120s
+# Reproduce: make verify_matrix
+# Commands below use temporary paths recreated by the harness.
+# Source SHA-256 hashes:
+2a547e5934bf746c1ead87c3eab83694edca95a13d4d25c8ce7d1f2ae5816509  Makefile
+472b91085ba98ad1533b76dad0b92e34808cb4747132010b0a30efc508e423ea  rtl/lane_alu.v
+fedc2643cce4b6933adb4a87787c280a597445aae0183274ef4cf5cf16d3a1eb  rtl/lane_mux.v
+854c5257c507a4b3279228d43e570046cb5dc38375c8c5a4fc1faea29434eba2  rtl/result_combiner.v
+80ca5a7ddb39ba6967a55fdce00f02e0e31723dce4e70a67ac44c8baef6b8289  rtl/simd_top.v
+c688810640b961c2588f2a65a0dd5e7ad9f1e75e40379ba5e072a4b753662e61  rtl/vector_alu.v
+bf045091f6a086e629074bf7e0482916b7496369f539760cf700d74849460f04  rtl/vector_control.v
+1ed302435f3c1487e5f0ee5cc5ab29fb739a66d7a429dd8b6c5f70ce0a616555  rtl/vector_regfile.v
+8144a0db539776884844ab290bf87e5a8806bb3661f079f4ae0b8f95e22eec25  rtl/simd_defs.vh
+73b0a72608d0d45e58ef951eaa312617b521d34ad6447d0103dd923cc7b1493d  tb/tb_defs.v
+9081215958e44dd2ac09fc73fa4d57b6ea8070bcc9a3daf342fe9d60c1464ba9  tb/tb_lane_alu.v
+22290bab65564cd2e050c3d5230f9f6d8323db49f09e662c46206109709a1ac5  tb/tb_lane_mux.v
+2afb013a3b58e6608e618530405d4348dcb372754beee3eccfc48ea9bb5f7f70  tb/tb_result_combiner.v
+232e2a73f665ee2ef67b1b225928d7a3c01e6eb8df34f03242477edf147cfe68  tb/tb_simd_top.v
+2f19f95fed731234484258bf35e7fe480dc24649ebad1eb7f8c3e6ae12c51e4f  tb/tb_smoke.v
+a0efe20d85bdb392dd9a4b59478f4dffa331d77cc4559a2c990153260f7360b1  tb/tb_vector_alu.v
+5071a2328a199f32b56c7998820d0b27c2c99386c9572331ee1a58eb48adab5e  tb/tb_vector_control.v
+742358bec48aeab46f242e582603d9093f6b1a4617edd0b3376739e8051ba267  tb/tb_vector_regfile.v
+ba9bba5d3a7f8a31e0ed31b8648e016c71fda312b66f9833a76f70e1d1700278  tb/ref_alu.vh
+1ba65e267a23edd96e601d600660acc8b07f15d6893342c23a3092ab10355699  scripts/mutation_cases.py
+9b4d3d5f2187a7817f98988b4538ded13446dddc8776fb71acd57a44aecab54d  scripts/vcd_to_tikz.py
+b8e880812c24a8628929ec90905942141ab1af57597f30a78b897827947cd943  scripts/verify_evidence.py
+
+## Complete suite by configuration
+L1_W8: PASS, 826047 checks; log: results/configurations/L1_W8.txt
+L4_W8: PASS, 826122 checks; log: results/configurations/L4_W8.txt
+L8_W8: PASS, 826886 checks; log: results/configurations/L8_W8.txt
+L1_W16: PASS, 374919 checks; log: results/configurations/L1_W16.txt
+L4_W16: PASS, 374994 checks; log: results/configurations/L4_W16.txt
+L8_W16: PASS, 375758 checks; log: results/configurations/L8_W16.txt
+L1_W2: PASS, 170091 checks; log: results/configurations/L1_W2.txt
+L4_W2: PASS, 170166 checks; log: results/configurations/L4_W2.txt
+L8_W2: PASS, 170930 checks; log: results/configurations/L8_W2.txt
+L1_W4: PASS, 172527 checks; log: results/configurations/L1_W4.txt
+L4_W4: PASS, 172602 checks; log: results/configurations/L4_W4.txt
+L8_W4: PASS, 173366 checks; log: results/configurations/L8_W4.txt

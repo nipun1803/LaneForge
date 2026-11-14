@@ -1,0 +1,516 @@
+# Historical Batch 2 source snapshot; latest complete runs are in results/verification_matrix.txt.
+# LaneForge Batch 2 focused verification evidence
+# Generated (UTC): 2026-11-14T20:29:13+00:00
+# Tool: Icarus Verilog version 13.0 (stable) (v13_0)
+# Scope: reset-store regression, HALT image boundary, ALU input normalization, supported width contract.
+# The complete suite and demo were not re-run. Unchanged module counts remain in the dated results/test_logs.txt.
+# Default current check total: 825600 - 4752 + 5274 = 826122 (LANES=4, WIDTH=8).
+# Source SHA-256 hashes:
+472b91085ba98ad1533b76dad0b92e34808cb4747132010b0a30efc508e423ea  rtl/lane_alu.v
+fedc2643cce4b6933adb4a87787c280a597445aae0183274ef4cf5cf16d3a1eb  rtl/lane_mux.v
+854c5257c507a4b3279228d43e570046cb5dc38375c8c5a4fc1faea29434eba2  rtl/result_combiner.v
+8144a0db539776884844ab290bf87e5a8806bb3661f079f4ae0b8f95e22eec25  rtl/simd_defs.vh
+80ca5a7ddb39ba6967a55fdce00f02e0e31723dce4e70a67ac44c8baef6b8289  rtl/simd_top.v
+c688810640b961c2588f2a65a0dd5e7ad9f1e75e40379ba5e072a4b753662e61  rtl/vector_alu.v
+bf045091f6a086e629074bf7e0482916b7496369f539760cf700d74849460f04  rtl/vector_control.v
+1ed302435f3c1487e5f0ee5cc5ab29fb739a66d7a429dd8b6c5f70ce0a616555  rtl/vector_regfile.v
+169426728a0b33d830ef85caac2763ea8c2a3116b65a566df3192675fcb68e86  synthesis/simd_synth_top.v
+ba9bba5d3a7f8a31e0ed31b8648e016c71fda312b66f9833a76f70e1d1700278  tb/ref_alu.vh
+09491b68aedd9b8cac48fbb507aa83729624666074ca75cacee712339242e75b  tb/tb_defs.v
+232e2a73f665ee2ef67b1b225928d7a3c01e6eb8df34f03242477edf147cfe68  tb/tb_simd_top.v
+bbcdb7b64598b49f22001736f9d69d47c59ed344e1a60056809c2c00d0910d8f  tb/tb_lane_alu.v
+39ec280f2632fd647bb3e5043c0722997e18c057370f0be50a2afc97568ca3ed  tb/tb_vector_alu.v
+
+## Regression reproduction before the fix (expected failures)
+
+make test_simd_top LANES=4 WIDTH=8 (strengthened test, old RTL)
+FAIL [P8 reset] DMEM[33] changed on the reset edge
+  total checks: 5274
+FAILED with 1 errors
+>>> tb_simd_top FAILED (LANES=4, WIDTH=8)
+
+make test_lane_alu LANES=4 WIDTH=2 (old reference model)
+FAIL VAND    a=0 b=0 : got y=0 f=0, expected y=0 f=1
+FAIL VOR     a=0 b=0 : got y=0 f=0, expected y=0 f=1
+FAIL VCMPLT  a=2 b=0 : got y=3 f=1, expected y=0 f=0
+FAIL VSRL    a=0 b=0 : got y=0 f=0, expected y=0 f=1
+  VAND            25       1  <-- FAIL
+  VOR             25       1  <-- FAIL
+  VCMPLT          25       1  <-- FAIL
+  VSRL            25       1  <-- FAIL
+FAILED with 4 errors
+>>> tb_lane_alu FAILED (LANES=4, WIDTH=2)
+
+make test_lane_alu LANES=4 WIDTH=4 (old reference model)
+FAIL VAND    a=c b=c : got y=c f=0, expected y=c f=1
+FAIL VOR     a=a b=0 : got y=a f=0, expected y=a f=1
+FAIL VOR     a=c b=c : got y=c f=0, expected y=c f=1
+FAIL VXOR    a=a b=0 : got y=a f=0, expected y=a f=1
+FAIL VCMPLT  a=a b=0 : got y=f f=1, expected y=0 f=0
+FAIL VSRL    a=a b=0 : got y=a f=0, expected y=a f=1
+FAIL VSRL    a=c b=c : got y=c f=0, expected y=c f=1
+  VAND           265       1  <-- FAIL
+  VOR            265       2  <-- FAIL
+  VXOR           265       1  <-- FAIL
+  VCMPLT         265       1  <-- FAIL
+  VSRL           265       2  <-- FAIL
+FAILED with 7 errors
+>>> tb_lane_alu FAILED (LANES=4, WIDTH=4)
+
+## Current focused checks (all expected outcomes passed)
+
+### make test_lane_alu test_vector_alu LANES=4 WIDTH=2
+iverilog -g2012 -Wall -I rtl -I tb -s tb_lane_alu \
+	    -P tb_lane_alu.LANES=4 -P tb_lane_alu.WIDTH=2 \
+	    -o sim/tb_lane_alu_L4_W2.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_lane_alu.v
+=== Running tb_lane_alu (LANES=4, WIDTH=2) ===
+VCD info: dumpfile sim/tb_lane_alu_L4_W2.vcd opened for output.
+
+  opcode   checks     fails   (WIDTH=2, exhaustive)
+  -------  ---------  ------
+  NOP            200       0        ok
+  VADD            25       0        ok
+  VSUB            25       0        ok
+  VAND            25       0        ok
+  VOR             25       0        ok
+  VXOR            25       0        ok
+  VCMPEQ          25       0        ok
+  VCMPLT          25       0        ok
+  VSLL            25       0        ok
+  VSRL            25       0        ok
+  VMUL            25       0        ok
+  SLI            200       0        ok
+  VLD            200       0        ok
+  VST            200       0        ok
+  VBCAST         200       0        ok
+  HALT           200       0        ok
+
+ALL PASS
+tb/tb_lane_alu.v:121: $finish called at 1450000 (1ps)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_vector_alu \
+	    -P tb_vector_alu.LANES=4 -P tb_vector_alu.WIDTH=2 \
+	    -o sim/tb_vector_alu_L4_W2.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_vector_alu.v
+=== Running tb_vector_alu (LANES=4, WIDTH=2) ===
+VCD info: dumpfile sim/tb_vector_alu_L4_W2.vcd opened for output.
+
+  vector_alu  LANES=4  WIDTH=2  (8-bit vectors)
+  opcode   checks  fails
+  -------  ------  -----
+  NOP         200      0        ok
+  VADD       5005      0        ok
+  VSUB       5005      0        ok
+  VAND       5004      0        ok
+  VOR        5004      0        ok
+  VXOR       5004      0        ok
+  VCMPEQ     5020      0        ok
+  VCMPLT     5020      0        ok
+  VSLL       5005      0        ok
+  VSRL       5005      0        ok
+  VMUL       5005      0        ok
+  SLI         200      0        ok
+  VLD         200      0        ok
+  VST         200      0        ok
+  VBCAST      200      0        ok
+  HALT        200      0        ok
+  mask coverage (lane: seen 0/1): L0:ok L1:ok L2:ok L3:ok 
+
+ALL PASS
+tb/tb_vector_alu.v:165: $finish called at 51277000 (1ps)
+
+### make test_lane_alu test_vector_alu LANES=4 WIDTH=4
+iverilog -g2012 -Wall -I rtl -I tb -s tb_lane_alu \
+	    -P tb_lane_alu.LANES=4 -P tb_lane_alu.WIDTH=4 \
+	    -o sim/tb_lane_alu_L4_W4.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_lane_alu.v
+=== Running tb_lane_alu (LANES=4, WIDTH=4) ===
+VCD info: dumpfile sim/tb_lane_alu_L4_W4.vcd opened for output.
+
+  opcode   checks     fails   (WIDTH=4, exhaustive)
+  -------  ---------  ------
+  NOP            200       0        ok
+  VADD           265       0        ok
+  VSUB           265       0        ok
+  VAND           265       0        ok
+  VOR            265       0        ok
+  VXOR           265       0        ok
+  VCMPEQ         265       0        ok
+  VCMPLT         265       0        ok
+  VSLL           265       0        ok
+  VSRL           265       0        ok
+  VMUL           265       0        ok
+  SLI            200       0        ok
+  VLD            200       0        ok
+  VST            200       0        ok
+  VBCAST         200       0        ok
+  HALT           200       0        ok
+
+ALL PASS
+tb/tb_lane_alu.v:121: $finish called at 3850000 (1ps)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_vector_alu \
+	    -P tb_vector_alu.LANES=4 -P tb_vector_alu.WIDTH=4 \
+	    -o sim/tb_vector_alu_L4_W4.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_vector_alu.v
+=== Running tb_vector_alu (LANES=4, WIDTH=4) ===
+VCD info: dumpfile sim/tb_vector_alu_L4_W4.vcd opened for output.
+
+  vector_alu  LANES=4  WIDTH=4  (16-bit vectors)
+  opcode   checks  fails
+  -------  ------  -----
+  NOP         200      0        ok
+  VADD       5005      0        ok
+  VSUB       5005      0        ok
+  VAND       5004      0        ok
+  VOR        5004      0        ok
+  VXOR       5004      0        ok
+  VCMPEQ     5020      0        ok
+  VCMPLT     5020      0        ok
+  VSLL       5005      0        ok
+  VSRL       5005      0        ok
+  VMUL       5005      0        ok
+  SLI         200      0        ok
+  VLD         200      0        ok
+  VST         200      0        ok
+  VBCAST      200      0        ok
+  HALT        200      0        ok
+  mask coverage (lane: seen 0/1): L0:ok L1:ok L2:ok L3:ok 
+
+ALL PASS
+tb/tb_vector_alu.v:165: $finish called at 51277000 (1ps)
+
+### make test_lane_alu test_vector_alu LANES=4 WIDTH=8
+iverilog -g2012 -Wall -I rtl -I tb -s tb_lane_alu \
+	    -P tb_lane_alu.LANES=4 -P tb_lane_alu.WIDTH=8 \
+	    -o sim/tb_lane_alu_L4_W8.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_lane_alu.v
+=== Running tb_lane_alu (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_lane_alu_L4_W8.vcd opened for output.
+
+  opcode   checks     fails   (WIDTH=8, exhaustive)
+  -------  ---------  ------
+  NOP            200       0        ok
+  VADD         65545       0        ok
+  VSUB         65545       0        ok
+  VAND         65545       0        ok
+  VOR          65545       0        ok
+  VXOR         65545       0        ok
+  VCMPEQ       65545       0        ok
+  VCMPLT       65545       0        ok
+  VSLL         65545       0        ok
+  VSRL         65545       0        ok
+  VMUL         65545       0        ok
+  SLI            200       0        ok
+  VLD            200       0        ok
+  VST            200       0        ok
+  VBCAST         200       0        ok
+  HALT           200       0        ok
+
+ALL PASS
+tb/tb_lane_alu.v:121: $finish called at 656650000 (1ps)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_vector_alu \
+	    -P tb_vector_alu.LANES=4 -P tb_vector_alu.WIDTH=8 \
+	    -o sim/tb_vector_alu_L4_W8.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_vector_alu.v
+=== Running tb_vector_alu (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_vector_alu_L4_W8.vcd opened for output.
+
+  vector_alu  LANES=4  WIDTH=8  (32-bit vectors)
+  opcode   checks  fails
+  -------  ------  -----
+  NOP         200      0        ok
+  VADD       5005      0        ok
+  VSUB       5005      0        ok
+  VAND       5004      0        ok
+  VOR        5004      0        ok
+  VXOR       5004      0        ok
+  VCMPEQ     5020      0        ok
+  VCMPLT     5020      0        ok
+  VSLL       5005      0        ok
+  VSRL       5005      0        ok
+  VMUL       5005      0        ok
+  SLI         200      0        ok
+  VLD         200      0        ok
+  VST         200      0        ok
+  VBCAST      200      0        ok
+  HALT        200      0        ok
+  mask coverage (lane: seen 0/1): L0:ok L1:ok L2:ok L3:ok 
+
+ALL PASS
+tb/tb_vector_alu.v:165: $finish called at 51277000 (1ps)
+
+### make test_lane_alu test_vector_alu LANES=4 WIDTH=16
+iverilog -g2012 -Wall -I rtl -I tb -s tb_lane_alu \
+	    -P tb_lane_alu.LANES=4 -P tb_lane_alu.WIDTH=16 \
+	    -o sim/tb_lane_alu_L4_W16.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_lane_alu.v
+=== Running tb_lane_alu (LANES=4, WIDTH=16) ===
+VCD info: dumpfile sim/tb_lane_alu_L4_W16.vcd opened for output.
+
+  opcode   checks     fails   (WIDTH=16,     random)
+  -------  ---------  ------
+  NOP            200       0        ok
+  VADD         20009       0        ok
+  VSUB         20009       0        ok
+  VAND         20009       0        ok
+  VOR          20009       0        ok
+  VXOR         20009       0        ok
+  VCMPEQ       20009       0        ok
+  VCMPLT       20009       0        ok
+  VSLL         20009       0        ok
+  VSRL         20009       0        ok
+  VMUL         20009       0        ok
+  SLI            200       0        ok
+  VLD            200       0        ok
+  VST            200       0        ok
+  VBCAST         200       0        ok
+  HALT           200       0        ok
+
+ALL PASS
+tb/tb_lane_alu.v:121: $finish called at 201290000 (1ps)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_vector_alu \
+	    -P tb_vector_alu.LANES=4 -P tb_vector_alu.WIDTH=16 \
+	    -o sim/tb_vector_alu_L4_W16.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_vector_alu.v
+=== Running tb_vector_alu (LANES=4, WIDTH=16) ===
+VCD info: dumpfile sim/tb_vector_alu_L4_W16.vcd opened for output.
+
+  vector_alu  LANES=4  WIDTH=16  (64-bit vectors)
+  opcode   checks  fails
+  -------  ------  -----
+  NOP         200      0        ok
+  VADD       5005      0        ok
+  VSUB       5005      0        ok
+  VAND       5004      0        ok
+  VOR        5004      0        ok
+  VXOR       5004      0        ok
+  VCMPEQ     5020      0        ok
+  VCMPLT     5020      0        ok
+  VSLL       5005      0        ok
+  VSRL       5005      0        ok
+  VMUL       5005      0        ok
+  SLI         200      0        ok
+  VLD         200      0        ok
+  VST         200      0        ok
+  VBCAST      200      0        ok
+  HALT        200      0        ok
+  mask coverage (lane: seen 0/1): L0:ok L1:ok L2:ok L3:ok 
+
+ALL PASS
+tb/tb_vector_alu.v:165: $finish called at 51277000 (1ps)
+
+### make test_simd_top LANES=4 WIDTH=2
+iverilog -g2012 -Wall -I rtl -I tb -s tb_simd_top \
+	    -P tb_simd_top.LANES=4 -P tb_simd_top.WIDTH=2 \
+	    -o sim/tb_simd_top_L4_W2.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_simd_top.v
+=== Running tb_simd_top (LANES=4, WIDTH=2) ===
+VCD info: dumpfile sim/tb_simd_top_L4_W2.vcd opened for output.
+
+  simd_top  LANES=4  WIDTH=2
+  program    instrs   cycles   lane-ops
+  P1 basic      5 instr     5 cycles      4 lane-ops        ok
+  P2 all-ops   44 instr    44 cycles     80 lane-ops        ok
+  P3 scalar    10 instr    10 cycles      8 lane-ops        ok
+  P4 hazards   14 instr    14 cycles     32 lane-ops        ok
+  P5 mask       9 instr     9 cycles     16 lane-ops        ok
+  P6 no-halt    3 instr     4 cycles      4 lane-ops        ok
+  P6 full     256 slots   258 cycles  PC=2 (bounded wrap check)
+  P7 freeze    44 instr    44 cycles     80 lane-ops        ok
+  P7 +50cyc    44 instr    44 cycles     80 lane-ops        ok
+  P8 reset     44 instr    44 cycles     80 lane-ops        ok
+  total checks: 5274
+
+ALL PASS
+tb/tb_simd_top.v:360: $finish called at 5437200 (1ps)
+
+### make test_simd_top LANES=4 WIDTH=4
+iverilog -g2012 -Wall -I rtl -I tb -s tb_simd_top \
+	    -P tb_simd_top.LANES=4 -P tb_simd_top.WIDTH=4 \
+	    -o sim/tb_simd_top_L4_W4.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_simd_top.v
+=== Running tb_simd_top (LANES=4, WIDTH=4) ===
+VCD info: dumpfile sim/tb_simd_top_L4_W4.vcd opened for output.
+
+  simd_top  LANES=4  WIDTH=4
+  program    instrs   cycles   lane-ops
+  P1 basic      5 instr     5 cycles      4 lane-ops        ok
+  P2 all-ops   44 instr    44 cycles     80 lane-ops        ok
+  P3 scalar    10 instr    10 cycles      8 lane-ops        ok
+  P4 hazards   14 instr    14 cycles     32 lane-ops        ok
+  P5 mask       9 instr     9 cycles     16 lane-ops        ok
+  P6 no-halt    3 instr     4 cycles      4 lane-ops        ok
+  P6 full     256 slots   258 cycles  PC=2 (bounded wrap check)
+  P7 freeze    44 instr    44 cycles     80 lane-ops        ok
+  P7 +50cyc    44 instr    44 cycles     80 lane-ops        ok
+  P8 reset     44 instr    44 cycles     80 lane-ops        ok
+  total checks: 5274
+
+ALL PASS
+tb/tb_simd_top.v:360: $finish called at 5437200 (1ps)
+
+### make test_simd_top LANES=4 WIDTH=8
+iverilog -g2012 -Wall -I rtl -I tb -s tb_simd_top \
+	    -P tb_simd_top.LANES=4 -P tb_simd_top.WIDTH=8 \
+	    -o sim/tb_simd_top_L4_W8.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_simd_top.v
+=== Running tb_simd_top (LANES=4, WIDTH=8) ===
+VCD info: dumpfile sim/tb_simd_top_L4_W8.vcd opened for output.
+
+  simd_top  LANES=4  WIDTH=8
+  program    instrs   cycles   lane-ops
+  P1 basic      5 instr     5 cycles      4 lane-ops        ok
+  P2 all-ops   44 instr    44 cycles     80 lane-ops        ok
+  P3 scalar    10 instr    10 cycles      8 lane-ops        ok
+  P4 hazards   14 instr    14 cycles     32 lane-ops        ok
+  P5 mask       9 instr     9 cycles     16 lane-ops        ok
+  P6 no-halt    3 instr     4 cycles      4 lane-ops        ok
+  P6 full     256 slots   258 cycles  PC=2 (bounded wrap check)
+  P7 freeze    44 instr    44 cycles     80 lane-ops        ok
+  P7 +50cyc    44 instr    44 cycles     80 lane-ops        ok
+  P8 reset     44 instr    44 cycles     80 lane-ops        ok
+  total checks: 5274
+
+ALL PASS
+tb/tb_simd_top.v:360: $finish called at 5437200 (1ps)
+
+### make test_simd_top LANES=4 WIDTH=16
+iverilog -g2012 -Wall -I rtl -I tb -s tb_simd_top \
+	    -P tb_simd_top.LANES=4 -P tb_simd_top.WIDTH=16 \
+	    -o sim/tb_simd_top_L4_W16.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_simd_top.v
+=== Running tb_simd_top (LANES=4, WIDTH=16) ===
+VCD info: dumpfile sim/tb_simd_top_L4_W16.vcd opened for output.
+
+  simd_top  LANES=4  WIDTH=16
+  program    instrs   cycles   lane-ops
+  P1 basic      5 instr     5 cycles      4 lane-ops        ok
+  P2 all-ops   44 instr    44 cycles     80 lane-ops        ok
+  P3 scalar    10 instr    10 cycles      8 lane-ops        ok
+  P4 hazards   14 instr    14 cycles     32 lane-ops        ok
+  P5 mask       9 instr     9 cycles     16 lane-ops        ok
+  P6 no-halt    3 instr     4 cycles      4 lane-ops        ok
+  P6 full     256 slots   258 cycles  PC=2 (bounded wrap check)
+  P7 freeze    44 instr    44 cycles     80 lane-ops        ok
+  P7 +50cyc    44 instr    44 cycles     80 lane-ops        ok
+  P8 reset     44 instr    44 cycles     80 lane-ops        ok
+  total checks: 5274
+
+ALL PASS
+tb/tb_simd_top.v:360: $finish called at 5437200 (1ps)
+
+### make test_simd_top LANES=1 WIDTH=8
+iverilog -g2012 -Wall -I rtl -I tb -s tb_simd_top \
+	    -P tb_simd_top.LANES=1 -P tb_simd_top.WIDTH=8 \
+	    -o sim/tb_simd_top_L1_W8.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_simd_top.v
+=== Running tb_simd_top (LANES=1, WIDTH=8) ===
+VCD info: dumpfile sim/tb_simd_top_L1_W8.vcd opened for output.
+
+  simd_top  LANES=1  WIDTH=8
+  program    instrs   cycles   lane-ops
+  P1 basic      5 instr     5 cycles      1 lane-ops        ok
+  P2 all-ops   44 instr    44 cycles     20 lane-ops        ok
+  P3 scalar    10 instr    10 cycles      2 lane-ops        ok
+  P4 hazards   14 instr    14 cycles      8 lane-ops        ok
+  P5 mask       9 instr     9 cycles      4 lane-ops        ok
+  P6 no-halt    3 instr     4 cycles      1 lane-ops        ok
+  P6 full     256 slots   258 cycles  PC=2 (bounded wrap check)
+  P7 freeze    44 instr    44 cycles     20 lane-ops        ok
+  P7 +50cyc    44 instr    44 cycles     20 lane-ops        ok
+  P8 reset     44 instr    44 cycles     20 lane-ops        ok
+  total checks: 5274
+
+ALL PASS
+tb/tb_simd_top.v:360: $finish called at 5437200 (1ps)
+
+### make test_simd_top LANES=8 WIDTH=8
+iverilog -g2012 -Wall -I rtl -I tb -s tb_simd_top \
+	    -P tb_simd_top.LANES=8 -P tb_simd_top.WIDTH=8 \
+	    -o sim/tb_simd_top_L8_W8.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_simd_top.v
+=== Running tb_simd_top (LANES=8, WIDTH=8) ===
+VCD info: dumpfile sim/tb_simd_top_L8_W8.vcd opened for output.
+
+  simd_top  LANES=8  WIDTH=8
+  program    instrs   cycles   lane-ops
+  P1 basic      5 instr     5 cycles      8 lane-ops        ok
+  P2 all-ops   44 instr    44 cycles    160 lane-ops        ok
+  P3 scalar    10 instr    10 cycles     16 lane-ops        ok
+  P4 hazards   14 instr    14 cycles     64 lane-ops        ok
+  P5 mask       9 instr     9 cycles     32 lane-ops        ok
+  P6 no-halt    3 instr     4 cycles      8 lane-ops        ok
+  P6 full     256 slots   258 cycles  PC=2 (bounded wrap check)
+  P7 freeze    44 instr    44 cycles    160 lane-ops        ok
+  P7 +50cyc    44 instr    44 cycles    160 lane-ops        ok
+  P8 reset     44 instr    44 cycles    160 lane-ops        ok
+  total checks: 5274
+
+ALL PASS
+tb/tb_simd_top.v:360: $finish called at 5437200 (1ps)
+
+### make test_defs WIDTH=2 (PASS)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_defs \
+	    -P tb_defs.LANES=4 -P tb_defs.WIDTH=2 \
+	    -o sim/tb_defs_L4_W2.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_defs.v
+=== Running tb_defs (LANES=4, WIDTH=2) ===
+ALL PASS
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+
+### make test_defs WIDTH=4 (PASS)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_defs \
+	    -P tb_defs.LANES=4 -P tb_defs.WIDTH=4 \
+	    -o sim/tb_defs_L4_W4.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_defs.v
+=== Running tb_defs (LANES=4, WIDTH=4) ===
+ALL PASS
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+
+### make test_defs WIDTH=8 (PASS)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_defs \
+	    -P tb_defs.LANES=4 -P tb_defs.WIDTH=8 \
+	    -o sim/tb_defs_L4_W8.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_defs.v
+=== Running tb_defs (LANES=4, WIDTH=8) ===
+ALL PASS
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+
+### make test_defs WIDTH=16 (PASS)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_defs \
+	    -P tb_defs.LANES=4 -P tb_defs.WIDTH=16 \
+	    -o sim/tb_defs_L4_W16.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_defs.v
+=== Running tb_defs (LANES=4, WIDTH=16) ===
+ALL PASS
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+
+### make test_defs WIDTH=1 (expected rejection)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_defs \
+	    -P tb_defs.LANES=4 -P tb_defs.WIDTH=1 \
+	    -o sim/tb_defs_L4_W1.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_defs.v
+=== Running tb_defs (LANES=4, WIDTH=1) ===
+FAIL: Supported WIDTH values are 2, 4, 8 and 16 (power-of-two shifts; bounded reference model)
+FAILED with 1 errors
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+>>> tb_defs FAILED (LANES=4, WIDTH=1)
+make: *** [test_defs] Error 1
+
+### make test_defs WIDTH=6 (expected rejection)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_defs \
+	    -P tb_defs.LANES=4 -P tb_defs.WIDTH=6 \
+	    -o sim/tb_defs_L4_W6.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_defs.v
+=== Running tb_defs (LANES=4, WIDTH=6) ===
+FAIL: Supported WIDTH values are 2, 4, 8 and 16 (power-of-two shifts; bounded reference model)
+FAILED with 1 errors
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+>>> tb_defs FAILED (LANES=4, WIDTH=6)
+make: *** [test_defs] Error 1
+
+### make test_defs WIDTH=32 (expected rejection)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_defs \
+	    -P tb_defs.LANES=4 -P tb_defs.WIDTH=32 \
+	    -o sim/tb_defs_L4_W32.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_defs.v
+=== Running tb_defs (LANES=4, WIDTH=32) ===
+FAIL: Supported WIDTH values are 2, 4, 8 and 16 (power-of-two shifts; bounded reference model)
+FAILED with 1 errors
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+>>> tb_defs FAILED (LANES=4, WIDTH=32)
+make: *** [test_defs] Error 1
+
+### make test_defs WIDTH=64 (expected rejection)
+iverilog -g2012 -Wall -I rtl -I tb -s tb_defs \
+	    -P tb_defs.LANES=4 -P tb_defs.WIDTH=64 \
+	    -o sim/tb_defs_L4_W64.out rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v tb/tb_defs.v
+=== Running tb_defs (LANES=4, WIDTH=64) ===
+FAIL: Supported WIDTH values are 2, 4, 8 and 16 (power-of-two shifts; bounded reference model)
+FAILED with 1 errors
+tb/tb_defs.v:88: $finish called at 1000 (1ps)
+>>> tb_defs FAILED (LANES=4, WIDTH=64)
+make: *** [test_defs] Error 1
+
+## Synthesis refresh
+make synth LANES=4 WIDTH=8 passed. See results/synth_L4_W8.txt for current command, tool and RTL hashes.
+Current generic total: 73962; SIMD core: 2972; top-level local logic: 70990.

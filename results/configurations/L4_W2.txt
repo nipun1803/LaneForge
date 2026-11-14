@@ -1,0 +1,220 @@
+# LaneForge reproducible verification evidence
+# Generated (UTC): 2026-11-14T21:11:40+00:00
+# Tool: Icarus Verilog version 13.0 (stable) (v13_0)
+# Mode: matrix; per-command timeout: 120s
+# Reproduce: make verify_matrix
+# Commands below use temporary paths recreated by the harness.
+# Source SHA-256 hashes:
+2a547e5934bf746c1ead87c3eab83694edca95a13d4d25c8ce7d1f2ae5816509  Makefile
+472b91085ba98ad1533b76dad0b92e34808cb4747132010b0a30efc508e423ea  rtl/lane_alu.v
+fedc2643cce4b6933adb4a87787c280a597445aae0183274ef4cf5cf16d3a1eb  rtl/lane_mux.v
+854c5257c507a4b3279228d43e570046cb5dc38375c8c5a4fc1faea29434eba2  rtl/result_combiner.v
+80ca5a7ddb39ba6967a55fdce00f02e0e31723dce4e70a67ac44c8baef6b8289  rtl/simd_top.v
+c688810640b961c2588f2a65a0dd5e7ad9f1e75e40379ba5e072a4b753662e61  rtl/vector_alu.v
+bf045091f6a086e629074bf7e0482916b7496369f539760cf700d74849460f04  rtl/vector_control.v
+1ed302435f3c1487e5f0ee5cc5ab29fb739a66d7a429dd8b6c5f70ce0a616555  rtl/vector_regfile.v
+8144a0db539776884844ab290bf87e5a8806bb3661f079f4ae0b8f95e22eec25  rtl/simd_defs.vh
+73b0a72608d0d45e58ef951eaa312617b521d34ad6447d0103dd923cc7b1493d  tb/tb_defs.v
+9081215958e44dd2ac09fc73fa4d57b6ea8070bcc9a3daf342fe9d60c1464ba9  tb/tb_lane_alu.v
+22290bab65564cd2e050c3d5230f9f6d8323db49f09e662c46206109709a1ac5  tb/tb_lane_mux.v
+2afb013a3b58e6608e618530405d4348dcb372754beee3eccfc48ea9bb5f7f70  tb/tb_result_combiner.v
+232e2a73f665ee2ef67b1b225928d7a3c01e6eb8df34f03242477edf147cfe68  tb/tb_simd_top.v
+2f19f95fed731234484258bf35e7fe480dc24649ebad1eb7f8c3e6ae12c51e4f  tb/tb_smoke.v
+a0efe20d85bdb392dd9a4b59478f4dffa331d77cc4559a2c990153260f7360b1  tb/tb_vector_alu.v
+5071a2328a199f32b56c7998820d0b27c2c99386c9572331ee1a58eb48adab5e  tb/tb_vector_control.v
+742358bec48aeab46f242e582603d9093f6b1a4617edd0b3376739e8051ba267  tb/tb_vector_regfile.v
+ba9bba5d3a7f8a31e0ed31b8648e016c71fda312b66f9833a76f70e1d1700278  tb/ref_alu.vh
+1ba65e267a23edd96e601d600660acc8b07f15d6893342c23a3092ab10355699  scripts/mutation_cases.py
+9b4d3d5f2187a7817f98988b4538ded13446dddc8776fb71acd57a44aecab54d  scripts/vcd_to_tikz.py
+b8e880812c24a8628929ec90905942141ab1af57597f30a78b897827947cd943  scripts/verify_evidence.py
+
+# Configuration: LANES=4, WIDTH=2
+
+## tb_defs: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_defs -P tb_defs.LANES=4 -P tb_defs.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/defs/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_defs.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/defs/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/defs/waveform.vcd
+  total checks: 145
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_defs.v:90: $finish called at 1000 (1ps)
+
+## tb_lane_alu: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_lane_alu -P tb_lane_alu.LANES=4 -P tb_lane_alu.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/lane_alu/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_lane_alu.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/lane_alu/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/lane_alu/waveform.vcd
+VCD info: dumpfile /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/lane_alu/waveform.vcd opened for output.
+
+  opcode   checks     fails   (WIDTH=2, exhaustive)
+  -------  ---------  ------
+  NOP            200       0        ok
+  VADD            25       0        ok
+  VSUB            25       0        ok
+  VAND            25       0        ok
+  VOR             25       0        ok
+  VXOR            25       0        ok
+  VCMPEQ          25       0        ok
+  VCMPLT          25       0        ok
+  VSLL            25       0        ok
+  VSRL            25       0        ok
+  VMUL            25       0        ok
+  SLI            200       0        ok
+  VLD            200       0        ok
+  VST            200       0        ok
+  VBCAST         200       0        ok
+  HALT           200       0        ok
+  total checks: 1450
+
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_lane_alu.v:128: $finish called at 1450000 (1ps)
+
+## tb_lane_mux: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_lane_mux -P tb_lane_mux.LANES=4 -P tb_lane_mux.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/lane_mux/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_lane_mux.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/lane_mux/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/lane_mux/waveform.vcd
+VCD info: dumpfile /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/lane_mux/waveform.vcd opened for output.
+
+  lane_mux  LANES=4  WIDTH=2
+  A pass         5002 checks
+  B bcast          12 checks
+  C bcast-out    2000 checks
+  D lanes           2 checks
+  E toggle       5000 checks
+  total checks: 12016
+
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_lane_mux.v:126: $finish called at 12016000 (1ps)
+
+## tb_result_combiner: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_result_combiner -P tb_result_combiner.LANES=4 -P tb_result_combiner.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/result_combiner/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_result_combiner.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/result_combiner/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/result_combiner/waveform.vcd
+VCD info: dumpfile /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/result_combiner/waveform.vcd opened for output.
+
+  result_combiner  LANES=4  WIDTH=2
+  A select      15000 checks
+  B reserved      200 checks
+  C mask           16 checks
+  D isolation    4000 checks
+  wb_sel coverage: ALU=5458 MEM=5533 BCAST=5502 RSVD=707
+
+  total checks: 19216
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_result_combiner.v:161: $finish called at 19216000 (1ps)
+
+## tb_simd_top: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_simd_top -P tb_simd_top.LANES=4 -P tb_simd_top.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/simd_top/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_simd_top.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/simd_top/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/simd_top/waveform.vcd
+VCD info: dumpfile /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/simd_top/waveform.vcd opened for output.
+
+  simd_top  LANES=4  WIDTH=2
+  program    instrs   cycles   lane-ops
+  P1 basic      5 instr     5 cycles      4 lane-ops        ok
+  P2 all-ops   44 instr    44 cycles     80 lane-ops        ok
+  P3 scalar    10 instr    10 cycles      8 lane-ops        ok
+  P4 hazards   14 instr    14 cycles     32 lane-ops        ok
+  P5 mask       9 instr     9 cycles     16 lane-ops        ok
+  P6 no-halt    3 instr     4 cycles      4 lane-ops        ok
+  P6 full     256 slots   258 cycles  PC=2 (bounded wrap check)
+  P7 freeze    44 instr    44 cycles     80 lane-ops        ok
+  P7 +50cyc    44 instr    44 cycles     80 lane-ops        ok
+  P8 reset     44 instr    44 cycles     80 lane-ops        ok
+  total checks: 5274
+
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_simd_top.v:360: $finish called at 5437200 (1ps)
+
+## tb_smoke: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_smoke -P tb_smoke.LANES=4 -P tb_smoke.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/smoke/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_smoke.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/smoke/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/smoke/waveform.vcd
+VCD info: dumpfile /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/smoke/waveform.vcd opened for output.
+LANES=4 WIDTH=2 vector=e4
+  total checks: 4
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_smoke.v:40: $finish called at 5000 (1ps)
+
+## tb_vector_alu: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_vector_alu -P tb_vector_alu.LANES=4 -P tb_vector_alu.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_alu/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_vector_alu.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_alu/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_alu/waveform.vcd
+VCD info: dumpfile /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_alu/waveform.vcd opened for output.
+
+  vector_alu  LANES=4  WIDTH=2  (8-bit vectors)
+  opcode   checks  fails
+  -------  ------  -----
+  NOP         200      0        ok
+  VADD       5005      0        ok
+  VSUB       5005      0        ok
+  VAND       5004      0        ok
+  VOR        5004      0        ok
+  VXOR       5004      0        ok
+  VCMPEQ     5020      0        ok
+  VCMPLT     5020      0        ok
+  VSLL       5005      0        ok
+  VSRL       5005      0        ok
+  VMUL       5005      0        ok
+  SLI         200      0        ok
+  VLD         200      0        ok
+  VST         200      0        ok
+  VBCAST      200      0        ok
+  HALT        200      0        ok
+  mask coverage (lane: seen 0/1): L0:ok L1:ok L2:ok L3:ok 
+
+  total checks: 51277
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_vector_alu.v:172: $finish called at 51277000 (1ps)
+
+## tb_vector_control: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_vector_control -P tb_vector_control.LANES=4 -P tb_vector_control.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_control/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_vector_control.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_control/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_control/waveform.vcd
+VCD info: dumpfile /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_control/waveform.vcd opened for output.
+
+  vector_control  (exhaustive: all 65536 instruction words)
+  opcode   decoded  fails
+  -------  -------  -----
+  NOP         4096      0        ok
+  VADD        4096      0        ok
+  VSUB        4096      0        ok
+  VAND        4096      0        ok
+  VOR         4096      0        ok
+  VXOR        4096      0        ok
+  VCMPEQ      4096      0        ok
+  VCMPLT      4096      0        ok
+  VSLL        4096      0        ok
+  VSRL        4096      0        ok
+  VMUL        4096      0        ok
+  SLI         4096      0        ok
+  VLD         4096      0        ok
+  VST         4096      0        ok
+  VBCAST      4096      0        ok
+  HALT        4096      0        ok
+  total checks: 65536
+
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_vector_control.v:163: $finish called at 65552000 (1ps)
+
+## tb_vector_regfile: PASS
+$ iverilog -g2012 -Wall -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl -I /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb -s tb_vector_regfile -P tb_vector_regfile.LANES=4 -P tb_vector_regfile.WIDTH=2 -o /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_regfile/simulation.out /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/lane_mux.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/result_combiner.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/simd_top.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_alu.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_control.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/rtl/vector_regfile.v /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_vector_regfile.v
+$ vvp -n /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_regfile/simulation.out +vcd=/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_regfile/waveform.vcd
+VCD info: dumpfile /var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/L4_W2/vector_regfile/waveform.vcd opened for output.
+
+  vector_regfile  LANES=4  WIDTH=2  (8 x 8-bit + 2-bit scalar)
+  A reset          17 checks
+  B readback       16 checks
+  C ports         128 checks
+  D rdw            32 checks
+  E we=0           17 checks
+  F isolate        21 checks
+  G random      15000 checks
+  H reset          17 checks
+  total         15248 checks, 0 errors
+  total checks: 15248
+
+ALL PASS
+/var/folders/zh/_11gwj7x0xqd3ysrwy2skj800000gn/T/laneforge-evidence-00vyjgax/source/tb/tb_vector_regfile.v:209: $finish called at 100908000 (1ps)
+
+## Summary
+tb_defs: PASS, checks=145
+tb_lane_alu: PASS, checks=1450
+tb_lane_mux: PASS, checks=12016
+tb_result_combiner: PASS, checks=19216
+tb_simd_top: PASS, checks=5274
+tb_smoke: PASS, checks=4
+tb_vector_alu: PASS, checks=51277
+tb_vector_control: PASS, checks=65536
+tb_vector_regfile: PASS, checks=15248
+Total checks: 170166; configuration: PASS
