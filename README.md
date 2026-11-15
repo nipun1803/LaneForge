@@ -2,7 +2,7 @@
 
 A small **SIMD (Single Instruction, Multiple Data) processor** written in Verilog. One instruction performs the same operation on **4 data elements at once** (or 8, or 1, set by a parameter). The 1-lane build is an ordinary scalar processor with the same instruction set, so scalar and SIMD versions can be compared fairly.
 
-Course project 11, Master of Computer Applications, Semester V. Phase I.
+Course project 11, Modern Computer Architecture, Semester V. Phase I.
 
 ```mermaid
 flowchart LR

@@ -1,5 +1,5 @@
 # LaneForge generic synthesis evidence
-# Generated (UTC): 2026-11-14T20:27:41Z
+# Generated (UTC): 2026-11-15T18:01:48Z
 # Tool: Yosys 0.70+post (git sha1 0c11ea098be065e585a90a06e7b7da49936cf231, Release, AppleClang clang++ 21.0.0.21000334)
 # Parameters: LANES=4, WIDTH=8, EXTERNAL_INSTR=1
 # Scope: datapath, data memory, PC, counters; instruction ROM excluded
