@@ -608,8 +608,10 @@ target FPGA; adapting the asynchronous read ports for block RAM is future work.
 
 % -----------------------------------------------------------------------------
 \section{Individual Contributions}
-Work was split by layer: RTL design, verification, build and documentation, and
-the report. Every item below can be traced to commits in the project's Git
+Work was split by layer: RTL design, verification, build and documentation,
+the report, and video demonstration. A recorded video demonstration is
+available at \url{https://drive.google.com/drive/folders/17inRVThPM6PJx6WKdC6LPiTfmpqH07jN}.
+Every item below can be traced to commits in the project's Git
 repository under the GitHub username shown in brackets, and
 Fig.~\ref{fig:team} maps each file to the member who wrote it.
 
@@ -683,9 +685,9 @@ testbench sits directly below the RTL module it verifies.}
       \emph{Phase~II:} random-program verification.
 \item \textbf{Mohan Kumar C R} (\texttt{mohan101mk}) -- storage, control and
       integration RTL: the vector register file and scalar register, the vector
-      control unit (instruction decoder), and the top level \texttt{simd\_top}
+      control unit (instruction decoder), the top level \texttt{simd\_top}
       (instruction and data memories, program counter, \texttt{HALT} handling,
-      performance counters, debug read port).
+      performance counters, debug read port), and prototype video recording.
       \emph{Phase~II:} FPGA resource utilisation and maximum frequency.
 \item \textbf{Anushka Tyagi} (\texttt{anu-ushka}) -- the complete verification
       suite: shared testbench definitions, the independent ALU reference model,

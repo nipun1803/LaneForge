@@ -91,7 +91,7 @@ The evidence runners use Python's standard library and temporary source copies. 
 | RTL mutation evidence | [results/mutations.txt](results/mutations.txt) |
 | Coverage-guard evidence | [results/coverage_guards.txt](results/coverage_guards.txt) |
 | Historical tests and example-program evidence | [results/test_logs.txt](results/test_logs.txt) |
-| Demo video | _link to be added_ |
+| Demo video | [Google Drive video](https://drive.google.com/drive/folders/17inRVThPM6PJx6WKdC6LPiTfmpqH07jN) |
 
 ## Repository layout
 
@@ -138,7 +138,7 @@ Every row matches the commit history (`git shortlog -sn`) and Section V / Fig. 6
 | Member | GitHub | Files and work |
 |---|---|---|
 | Nipun Patlori | `nipun1803` | Datapath RTL: `simd_defs.vh` (ISA definitions), `lane_alu.v`, `lane_mux.v`, `vector_alu.v`, `result_combiner.v`; report waveform figure (`scripts/vcd_to_tikz.py`), conclusion, `results/test_logs.txt` |
-| Mohan Kumar C R | `mohan101mk` | Storage, control and integration RTL: `vector_regfile.v`, `vector_control.v`, `simd_top.v` |
+| Mohan Kumar C R | `mohan101mk` | Storage, control and integration RTL: `vector_regfile.v`, `vector_control.v`, `simd_top.v`; video recording |
 | Anushka Tyagi | `anu-ushka` | Verification: `tb_defs.v`, `ref_alu.vh` reference model and all nine testbenches in `tb/` |
 | Omkar Hadole | `omkar-hadole` | Scaffolding and `Makefile`, synthesis report, all of `docs/`, this README, IEEE report text (up to the conclusion) and references |
 | Saksham Sharma | `Saksham-9898` | IEEE report figures 1–4 and 6 (colour diagrams), README / report / Git consistency review, example programs in `programs/` with `make demo` |
