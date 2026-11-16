@@ -4,6 +4,8 @@ A small **SIMD (Single Instruction, Multiple Data) processor** written in Verilo
 
 Course project 11, Modern Computer Architecture, Semester V. Phase I.
 
+> 📹 **Demo Video:** [Watch the Prototype Demonstration on Google Drive](https://drive.google.com/drive/folders/17inRVThPM6PJx6WKdC6LPiTfmpqH07jN)
+
 ```mermaid
 flowchart LR
     I["One instruction<br/>VADD v3, v1, v2"] --> D["Decoder"]
