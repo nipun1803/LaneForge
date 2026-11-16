@@ -3,7 +3,7 @@
 # Generated (UTC): 2026-11-14T20:29:13+00:00
 # Tool: Icarus Verilog version 13.0 (stable) (v13_0)
 # Scope: reset-store regression, HALT image boundary, ALU input normalization, supported width contract.
-# The complete suite and demo were not re-run. Unchanged module counts remain in the dated results/test_logs.txt.
+# The complete suite and demo were not re-run. Unchanged module counts remain in the dated results/history/test_logs.txt.
 # Default current check total: 825600 - 4752 + 5274 = 826122 (LANES=4, WIDTH=8).
 # Source SHA-256 hashes:
 472b91085ba98ad1533b76dad0b92e34808cb4747132010b0a30efc508e423ea  rtl/lane_alu.v

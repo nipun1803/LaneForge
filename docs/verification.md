@@ -46,7 +46,7 @@ flowchart LR
 | `tb_simd_top` | `simd_top` | 8 scenarios, 9 final-state comparisons, reset-store and full-image boundary checks | 5,274 | PASS |
 | **Total** | | | **826,122** | **ALL PASS** |
 
-The current [verification matrix](../results/verification_matrix.txt) records complete runs of all nine testbenches. Each configuration log includes compiler/simulator commands, tool version, source hashes and check totals measured by the benches. The [Batch 2 snapshot](../results/batch2_checks.txt) preserves the earlier reset and narrow-width regression evidence; its totals and hashes describe that earlier source revision.
+The current [verification matrix](../results/verification_matrix.txt) records complete runs of all nine testbenches. Each configuration log includes compiler/simulator commands, tool version, source hashes and check totals measured by the benches. The [Batch 2 snapshot](../results/history/batch2_checks.txt) preserves the earlier reset and narrow-width regression evidence; its totals and hashes describe that earlier source revision.
 
 | Lanes | WIDTH=2 | WIDTH=4 | WIDTH=8 | WIDTH=16 |
 |---|---|---|---|---|

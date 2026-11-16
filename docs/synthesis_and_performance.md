@@ -74,12 +74,14 @@ throughput  = lane_ops / cycle_count           (element operations per cycle)
 | Workload | Task | Instructions it relies on |
 |---|---|---|
 | W1 | add two 32-element arrays: `C = A + B` | `VLD`, `VADD`, `VST` |
-| W2 | count elements above a threshold | `SLI`, `VCMPLT` with the scalar, `VAND`, `VADD` |
+| W2 | count elements below a threshold (signed `<`) | `SLI`, `VCMPLT` with the scalar, `VAND`, `VADD` |
 | W3 | bitwise masking: `C = (A AND M) OR B` | `VLD`, `VAND`, `VOR`, `VST` |
 
 ### Expected result for W1
 
-| Build | Loop iterations | Instructions | Cycles | Expected speedup |
+The instruction set has no branch instructions, so every workload is written as straight-line (fully unrolled) code. Each block below is `VLD, VLD, VADD, VST` and handles one vector of `LANES` elements.
+
+| Build | Unrolled blocks | Instructions | Cycles | Expected speedup |
 |---|---:|---|---:|---:|
 | 1 lane | 32 | 32 × 4 + HALT | 129 | 1.0× |
 | 4 lanes | 8 | 8 × 4 + HALT | 33 | 3.9× |

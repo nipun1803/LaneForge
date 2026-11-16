@@ -4,12 +4,28 @@
 %  fig_waveform.tex; set main.tex as the main document)
 \documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
+\setcounter{dbltopnumber}{2}   % allow two full-width figures at the top of a page
+
+% ---- fonts ----
+% IEEEtran expects Times text and Courier code. pdfLaTeX (Overleaf) finds them
+% automatically; XeTeX-based engines such as tectonic do not, and silently fall
+% back to upright Latin Modern (no bold, italic or monospace). Load the TeX Gyre
+% Times/Courier clones explicitly in that case.
+\usepackage{iftex}
+\ifXeTeX
+  \usepackage{fontspec}
+  \setmainfont{texgyretermes}[Extension=.otf, UprightFont=*-regular,
+    BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+  \setmonofont{texgyrecursor}[Extension=.otf, UprightFont=*-regular,
+    BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic]
+\fi
 
 \usepackage{cite}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{url}
+\usepackage{xurl}        % url + line breaks anywhere in long paths/URLs
+\usepackage{microtype}   % margin kerning: fewer loose or badly broken lines
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,fit,calc,backgrounds}
 
@@ -156,8 +172,8 @@ and identify lanes, vector registers and memory bandwidth as the main design
 parameters.
 
 \subsection{Packed SIMD extensions in general-purpose processors}
-General-purpose processors adopted \emph{packed} (sub-word) SIMD, in which one
-wide register is split into several narrow lanes. HP's MAX-2~\cite{lee1996} and
+General-purpose processors adopted \emph{packed} SIMD, also called sub-word
+parallelism, in which one wide register is split into several narrow lanes. HP's MAX-2~\cite{lee1996} and
 Intel's MMX~\cite{peleg1996} added parallel 8/16/32-bit operations on 64-bit
 registers for multimedia, including saturating arithmetic and parallel compares
 that produce all-ones/all-zeros masks. Streaming SIMD Extensions~\cite{thakkar1999}
@@ -314,11 +330,11 @@ Three design choices make the top level robust and measurable:
       preserves both memories. The PC stays on \texttt{HALT}. Pre-filled
       \texttt{HALT} slots stop short programs; a full 256-slot image without
       \texttt{HALT} wraps and repeats. External sources must supply \texttt{HALT}.
-\item \textbf{Performance counters.} \texttt{cycle\_count} and
-      \texttt{instr\_count} count executed cycles and instructions (equal, since
-      CPI~$=1$), and \texttt{lane\_ops} adds $L$ for every vector ALU
+\item \textbf{Performance counters.} \path{cycle_count} and
+      \path{instr_count} count executed cycles and instructions (equal, since
+      CPI~$=1$), and \path{lane_ops} adds $L$ for every vector ALU
       instruction. Throughput in element operations per cycle is therefore
-      \texttt{lane\_ops}/\texttt{cycle\_count}.
+      \path{lane_ops}/\path{cycle_count}.
 \item \textbf{Debug read port.} An asynchronous read port on the data memory lets
       the testbench check results through the design's own interface. It also
       gives synthesis an observable path for stored datapath results. For resource
@@ -467,9 +483,9 @@ seen low and high, and all four write-back selections exercised. Six
 incomplete-stimulus probes are rejected.
 
 \texttt{make verify\_matrix} saves twelve configuration runs in
-\texttt{results/verification\_matrix.txt}. \texttt{make mutation\_tests}
-saves passing baselines and 23 detected faults in \texttt{results/mutations.txt},
-plus coverage probes in \texttt{results/coverage\_guards.txt}. Logs include tool
+\path{results/verification_matrix.txt}. \texttt{make mutation\_tests}
+saves passing baselines and 23 detected faults in \path{results/mutations.txt},
+plus coverage probes in \path{results/coverage_guards.txt}. Logs include tool
 versions, commands, source hashes and exact mutations. Build errors, timeouts
 and survivors fail verification.
 Fig.~\ref{fig:verif} shows the flow and Table~\ref{tab:ver} summarises the
@@ -558,63 +574,8 @@ vector at the next rising edge. The program halts after exactly five cycles.}
 \label{fig:wave}
 \end{figure*}
 
-\subsection{Implementation status and planned evaluation}
-The \texttt{simd\_synth\_top} wrapper uses Yosys~0.70+post to synthesise the
-processor with variable instruction inputs and observable status and data-memory
-outputs. This configuration includes the datapath, the
-512-word data memory, PC and counters, and excludes instruction ROM. The command
-\texttt{make synth LANES=4 WIDTH=8} reproduces the measurement; the saved report
-records the tool version, parameters, exact command and source SHA-256 hashes.
-At $L=4$, $W=8$, each lane ALU costs 436 generic cells, the register file 996,
-the result combiner 175, the lane multiplexer 32 and the decoder 25. The SIMD
-core therefore costs 2{,}972 cells and the whole configuration 73{,}962 cells.
-Data memory dominates the total with 16{,}384 flip-flops and read multiplexers.
-Its two asynchronous read ports prevent a guaranteed synchronous block-RAM
-mapping. FPGA tools may use distributed RAM, replicated memory or registers;
-actual memory and core resources will be measured separately. Block-RAM
-targeting may require clocked reads and changes to instruction timing.
-
-Phase~II runs three workloads on $L=1,4,8$: array addition, threshold counting
-with scalar broadcast, and bitwise masking. With CPI~$=1$, the speedup is
-\begin{equation}
-S(L) = \frac{\text{cycles}(L=1)}{\text{cycles}(L)} \le L ,
-\end{equation}
-and throughput is reported in element operations per cycle. FPGA resource use
-(LUTs, FFs, DSPs) and maximum frequency will be measured for each lane count to
-quantify the area cost of parallelism.
-
-% -----------------------------------------------------------------------------
-\section{Conclusion}
-This Phase~I work delivers a complete, parameterised SIMD vector processing unit
-in synthesisable Verilog: seven processor RTL modules plus a shared ISA header,
-integrated into a single-cycle
-processor with a sixteen-instruction ISA, scalar broadcast, compare masks and
-performance counters. The design is verified by a self-checking suite of
-826{,}122 checks at $L=4$, $W=8$ with no failures, including exhaustive testing of the lane ALU
-and the instruction decoder and whole-state comparison of the integrated unit
-against an instruction-set reference model; all 23 injected faults are
-detected, and all twelve supported configurations pass. Example programs loaded
-from hex files execute at exactly one cycle per instruction, and the simulated
-waveform (Fig.~\ref{fig:wave}) confirms that all lanes compute in the same
-cycle with no interaction between them.
-
-The current design has deliberate limitations: it is single-cycle, so the
-critical path runs through the ALU and memory in one clock period; programs are
-still hand-encoded; and the generic synthesis maps the data memory to flip-flops.
-Phase~II addresses these by adding an assembler, measuring scalar-versus-SIMD
-speedup on the benchmark workloads, scaling to eight lanes, and reporting FPGA
-resource use and maximum frequency. Memory mapping will be measured on the
-target FPGA; adapting the asynchronous read ports for block RAM is future work.
-
-% -----------------------------------------------------------------------------
-\section{Individual Contributions}
-Work was split by layer: RTL design, verification, build and documentation,
-the report, and video demonstration. A recorded video demonstration is
-available at \url{https://drive.google.com/drive/folders/17inRVThPM6PJx6WKdC6LPiTfmpqH07jN}.
-Every item below can be traced to commits in the project's Git
-repository under the GitHub username shown in brackets, and
-Fig.~\ref{fig:team} maps each file to the member who wrote it.
-
+% Fig. 6 is defined here (not in Section V) so it floats onto the same page as
+% Fig. 5 instead of being stranded alone on the last page.
 \begin{figure*}[t]
 \centering
 \begin{tikzpicture}[
@@ -673,6 +634,64 @@ Fig.~\ref{fig:team} maps each file to the member who wrote it.
 testbench sits directly below the RTL module it verifies.}
 \label{fig:team}
 \end{figure*}
+
+\subsection{Implementation status and planned evaluation}
+The \texttt{simd\_synth\_top} wrapper uses Yosys~0.70+post to synthesise the
+processor with variable instruction inputs and observable status and data-memory
+outputs. This configuration includes the datapath, the
+512-word data memory, PC and counters, and excludes instruction ROM. The command
+\texttt{make synth LANES=4 WIDTH=8} reproduces the measurement; the saved report
+records the tool version, parameters, exact command and source SHA-256 hashes.
+At $L=4$, $W=8$, each lane ALU costs 436 generic cells, the register file 996,
+the result combiner 175, the lane multiplexer 32 and the decoder 25. The SIMD
+core therefore costs 2{,}972 cells and the whole configuration 73{,}962 cells.
+Data memory dominates the total with 16{,}384 flip-flops and read multiplexers.
+Its two asynchronous read ports prevent a guaranteed synchronous block-RAM
+mapping. FPGA tools may use distributed RAM, replicated memory or registers;
+actual memory and core resources will be measured separately. Block-RAM
+targeting may require clocked reads and changes to instruction timing.
+
+Phase~II runs three workloads on $L=1,4,8$: array addition, threshold counting
+with scalar broadcast, and bitwise masking. With CPI~$=1$, the speedup is
+\begin{equation}
+S(L) = \frac{\text{cycles}(L=1)}{\text{cycles}(L)} \le L ,
+\end{equation}
+and throughput is reported in element operations per cycle. FPGA resource use
+(LUTs, FFs, DSPs) and maximum frequency will be measured for each lane count to
+quantify the area cost of parallelism.
+
+% -----------------------------------------------------------------------------
+\section{Conclusion}
+This Phase~I work delivers a complete, parameterised SIMD vector processing unit
+in synthesisable Verilog: seven processor RTL modules plus a shared ISA header,
+integrated into a single-cycle
+processor with a sixteen-instruction ISA, scalar broadcast, compare masks and
+performance counters. The design is verified by a self-checking suite of
+826{,}122 checks at $L=4$, $W=8$ with no failures, including exhaustive testing of the lane ALU
+and the instruction decoder and whole-state comparison of the integrated unit
+against an instruction-set reference model; all 23 injected faults are
+detected, and all twelve supported configurations pass. Example programs loaded
+from hex files execute at exactly one cycle per instruction, and the simulated
+waveform (Fig.~\ref{fig:wave}) confirms that all lanes compute in the same
+cycle with no interaction between them.
+
+The current design has deliberate limitations: it is single-cycle, so the
+critical path runs through the ALU and memory in one clock period; programs are
+still hand-encoded; and the generic synthesis maps the data memory to flip-flops.
+Phase~II addresses these by adding an assembler, measuring scalar-versus-SIMD
+speedup on the benchmark workloads, scaling to eight lanes, and reporting FPGA
+resource use and maximum frequency. Memory mapping will be measured on the
+target FPGA; adapting the asynchronous read ports for block RAM is future work.
+
+% -----------------------------------------------------------------------------
+\section{Individual Contributions}
+Work was split by layer: RTL design, verification, build and documentation,
+the report, and video demonstration. A recorded video demonstration is
+available at \url{https://drive.google.com/drive/folders/17inRVThPM6PJx6WKdC6LPiTfmpqH07jN}.
+Every item below can be traced to commits in the project's Git
+repository under the GitHub username shown in brackets, and
+Fig.~\ref{fig:team} maps each file to the member who wrote it.
+
 
 \begin{itemize}
 \item \textbf{Nipun Patlori} (\texttt{nipun1803}) -- datapath RTL: the shared

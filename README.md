@@ -89,10 +89,11 @@ The evidence runners use Python's standard library and temporary source copies. 
 | How it was tested and the results | [docs/verification.md](docs/verification.md) |
 | Hardware cost and performance measurement | [docs/synthesis_and_performance.md](docs/synthesis_and_performance.md) |
 | IEEE report | [docs/report/main.pdf](docs/report/main.pdf) |
+| Phase I report, frozen as submitted (16 Nov 2026) | [docs/report/phase1/main.pdf](docs/report/phase1/main.pdf) |
 | Current complete verification matrix | [results/verification_matrix.txt](results/verification_matrix.txt) |
 | RTL mutation evidence | [results/mutations.txt](results/mutations.txt) |
 | Coverage-guard evidence | [results/coverage_guards.txt](results/coverage_guards.txt) |
-| Historical tests and example-program evidence | [results/test_logs.txt](results/test_logs.txt) |
+| Historical tests and example-program evidence | [results/history/test_logs.txt](results/history/test_logs.txt) |
 | Demo video | [Google Drive video](https://drive.google.com/drive/folders/17inRVThPM6PJx6WKdC6LPiTfmpqH07jN) |
 
 ## Repository layout
@@ -139,7 +140,7 @@ Every row matches the commit history (`git shortlog -sn`) and Section V / Fig. 6
 
 | Member | GitHub | Files and work |
 |---|---|---|
-| Nipun Patlori | `nipun1803` | Datapath RTL: `simd_defs.vh` (ISA definitions), `lane_alu.v`, `lane_mux.v`, `vector_alu.v`, `result_combiner.v`; report waveform figure (`scripts/vcd_to_tikz.py`), conclusion, `results/test_logs.txt` |
+| Nipun Patlori | `nipun1803` | Datapath RTL: `simd_defs.vh` (ISA definitions), `lane_alu.v`, `lane_mux.v`, `vector_alu.v`, `result_combiner.v`; report waveform figure (`scripts/vcd_to_tikz.py`), conclusion, `results/history/test_logs.txt` |
 | Mohan Kumar C R | `mohan101mk` | Storage, control and integration RTL: `vector_regfile.v`, `vector_control.v`, `simd_top.v`; video recording |
 | Anushka Tyagi | `anu-ushka` | Verification: `tb_defs.v`, `ref_alu.vh` reference model and all nine testbenches in `tb/` |
 | Omkar Hadole | `omkar-hadole` | Scaffolding and `Makefile`, synthesis report, all of `docs/`, this README, IEEE report text (up to the conclusion) and references |

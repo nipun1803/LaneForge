@@ -15,7 +15,7 @@ Start here. The files are ordered so that each one builds on the previous one. I
 | 9 | [verification.md](verification.md) | How every module was tested, the results, and the planted-bug experiment |
 | 10 | [synthesis_and_performance.md](synthesis_and_performance.md) | Hardware cost from synthesis, and how scalar vs. SIMD performance will be measured |
 
-The formal write-up is the IEEE report: [report/main.pdf](report/main.pdf) (source: [report/main.tex](report/main.tex)).
+The formal write-up is the IEEE report: [report/main.pdf](report/main.pdf) (source: [report/main.tex](report/main.tex)). The Phase I submission is kept unchanged in [report/phase1/main.pdf](report/phase1/main.pdf).
 
 ```mermaid
 flowchart LR

@@ -1,4 +1,4 @@
-# Historical pre-Batch-2 run. Batch 2 regression evidence: results/batch2_checks.txt; latest complete runs: results/verification_matrix.txt.
+# Historical pre-Batch-2 run. Batch 2 regression evidence: results/history/batch2_checks.txt; latest complete runs: results/verification_matrix.txt.
 # LaneForge SIMD - Phase I test evidence
 # Generated 2026-11-14 with Icarus Verilog version 13.0 (stable) (v13_0)
 # Commands: make all_tests  (LANES=4, WIDTH=8)  and  make demo

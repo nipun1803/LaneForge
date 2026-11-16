@@ -1,0 +1,3 @@
+# Map every Git author name to one canonical identity (used by git log / shortlog / blame).
+# Format: Canonical Name <canonical@email> Commit Name <commit@email>
+Mohan Kumar C R <mohankumarcr101@gmail.com> mohan101mk <mohankumarcr101@gmail.com>
