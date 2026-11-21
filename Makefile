@@ -6,8 +6,18 @@
 #    make test_<name> LANES=8    same, overriding the testbench LANES parameter
 #    make all_tests              run every tb/tb_*.v
 #    make wave_<name>            run test, then print the VCD path to open
-#    make demo                   run the example programs in programs/
+#    make asm                    assemble programs/*.s -> programs/*.hex (+ _data.hex)
+#    make asm_test               run the assembler's self-checking tests
+#    make model_test             ISA reference model tests + RTL-vs-model cross-check
+#    make run_prog PROG=x.s      run one program on the RTL and the ISA model, compare
+#    make random_tests           random programs, RTL vs ISA model, 12 builds (N=1000 SEED=1)
+#    make random_mutations       score random programs against the 23 planted RTL bugs
+#    make bench                  scalar-vs-SIMD benchmarks (LANES=1,4,8) -> results/bench.*
+#    make demo                   assemble, then run the example programs in programs/
 #    make synth LANES=4          Yosys generic synthesis + cell statistics
+#    make synth_scaling          generic synthesis for LANES=1,4,8 -> results/synth_scaling.csv
+#    make fpga                   ECP5 synthesis + place & route, LANES=1,4,8 -> results/fpga/
+#    make report                 tables from results/ + build docs/report/main.pdf (tectonic)
 #    make clean                  remove build outputs
 # =============================================================================
 
@@ -35,13 +45,13 @@ TESTS    := $(patsubst $(TB_DIR)/tb_%.v,%,$(TB_SRCS))
 # -I     : `include search path - rtl/ for simd_defs.vh, tb/ for ref_alu.vh
 IVFLAGS  := -g2012 -Wall -I $(RTL_DIR) -I $(TB_DIR)
 
-.PHONY: all_tests clean synth help demo verify_matrix mutation_tests
+.PHONY: all_tests clean synth help demo verify_matrix mutation_tests asm asm_test model_test run_prog random_tests random_mutations bench synth_scaling fpga report
 
 # Keep compiled sims (otherwise make deletes them as intermediates)
 .SECONDARY:
 
 help:
-	@echo "Targets: test_<name> | all_tests | verify_matrix | mutation_tests | wave_<name> | demo | synth | clean"
+	@echo "Targets: test_<name> | all_tests | verify_matrix | mutation_tests | wave_<name> | asm | asm_test | model_test | run_prog | random_tests | random_mutations | bench | demo | synth | synth_scaling | fpga | report | clean"
 	@echo "Tests found: $(TESTS)"
 
 # --- Simulation ---------------------------------------------------------------
@@ -80,8 +90,42 @@ verify_matrix:
 mutation_tests:
 	$(PYTHON) scripts/verify_evidence.py mutations --iverilog "$(IVERILOG)" --vvp "$(VVP)"
 
+# --- Assembler (scripts/lfasm.py; opcodes and fields come from rtl/simd_defs.vh)
+# The example programs are written for the default LANES=4, WIDTH=8 build.
+ASM_SRCS := $(wildcard programs/*.s)
+ASM_HEX  := $(ASM_SRCS:.s=.hex)
+
+programs/%.hex: programs/%.s scripts/lfasm.py $(RTL_DIR)/simd_defs.vh
+	$(PYTHON) scripts/lfasm.py $< --lanes 4 --width 8
+
+asm: $(ASM_HEX)
+
+asm_test:
+	$(PYTHON) scripts/test_lfasm.py
+
+# --- ISA reference model (scripts/lfmodel.py) and program runner (tb/prog_runner.v)
+model_test:
+	$(PYTHON) scripts/test_lfmodel.py
+
+run_prog:
+	@test -n "$(PROG)" || (echo "usage: make run_prog PROG=file.s [LANES=4 WIDTH=8]"; exit 1)
+	$(PYTHON) scripts/lfrun.py $(PROG) --lanes $(LANES) --width $(WIDTH) --iverilog "$(IVERILOG)" --vvp "$(VVP)"
+
+# --- Random-program verification and benchmarks (Phase II) ------------------------
+N    ?= 1000
+SEED ?= 1
+
+random_tests:
+	$(PYTHON) scripts/random_verify.py --n $(N) --seed $(SEED) --iverilog "$(IVERILOG)" --vvp "$(VVP)"
+
+random_mutations:
+	$(PYTHON) scripts/random_verify.py --mutations --n 300 --seed $(SEED) --iverilog "$(IVERILOG)" --vvp "$(VVP)"
+
+bench:
+	$(PYTHON) scripts/bench.py --iverilog "$(IVERILOG)" --vvp "$(VVP)"
+
 # --- Example programs (programs/*.hex, loaded via IMEM_INIT / DMEM_INIT) -------
-demo: | $(SIM_DIR)
+demo: asm | $(SIM_DIR)
 	$(IVERILOG) $(IVFLAGS) -s run_programs -o $(SIM_DIR)/run_programs.out \
 	    $(RTL_SRCS) programs/run_programs.v
 	@$(VVP) -n $(SIM_DIR)/run_programs.out +vcd=$(SIM_DIR)/run_programs.vcd \
@@ -114,6 +158,28 @@ synth: | $(SIM_DIR) $(RES_DIR)
 	@echo "Generic cell hierarchy (LANES=$(LANES), WIDTH=$(WIDTH), instruction ROM excluded):"
 	@sed -n '/=== design hierarchy ===/,$$p' $(SYNTH_REPORT)
 	@echo "Full report with reproduction details: $(SYNTH_REPORT)"
+
+# --- Scaling studies (Phase II) ---------------------------------------------------
+# Generic cells for 1, 4 and 8 lanes (same Yosys flow as `make synth`).
+synth_scaling:
+	for l in 1 4 8; do $(MAKE) --no-print-directory synth LANES=$$l WIDTH=8 || exit 1; done
+	$(PYTHON) scripts/synth_scaling.py --lanes 1,4,8 --width 8
+
+# Lattice ECP5-85F resource use and Fmax with the open-source flow (Yosys synth_ecp5 +
+# nextpnr-ecp5). Needs the YosysHQ OSS CAD Suite; point OSS_CAD at its bin/ directory.
+OSS_CAD    ?= $(HOME)/tools/oss-cad-suite/bin
+FPGA_LANES ?= 1,4,8
+FPGA_SEEDS ?= 1,2,3
+
+fpga:
+	$(PYTHON) scripts/fpga_flow.py --lanes $(FPGA_LANES) --width 8 --seeds $(FPGA_SEEDS) --tools "$(OSS_CAD)"
+
+# --- IEEE report: every Results number is generated from results/ --------------------
+TECTONIC ?= tectonic
+
+report:
+	$(PYTHON) scripts/report_tables.py
+	cd docs/report && $(TECTONIC) main.tex
 
 # --- Housekeeping -------------------------------------------------------------
 $(SIM_DIR) $(RES_DIR):

@@ -11,6 +11,7 @@ How to install the tools, run the tests, look at waveforms and run synthesis.
 | Python 3.9+ | reproducible configuration, mutation and coverage evidence | macOS: `brew install python` · Ubuntu/WSL: `sudo apt install python3` |
 | WaveTrace (VS Code extension) or GTKWave | viewing waveforms | VS Code Extensions panel → "WaveTrace" · Linux: `sudo apt install gtkwave` |
 | Tectonic (optional) | building the report PDF | macOS: `brew install tectonic` |
+| OSS CAD Suite (optional) | FPGA place and route and Fmax (`make fpga`): Yosys + nextpnr-ecp5 | download the archive for your OS from the [YosysHQ releases](https://github.com/YosysHQ/oss-cad-suite-build/releases), unpack it to `~/tools/oss-cad-suite`, or pass `OSS_CAD=/path/to/oss-cad-suite/bin` to `make fpga` |
 
 Check the install:
 
@@ -86,6 +87,16 @@ make synth LANES=4 WIDTH=8
 ```
 
 This synthesises `synthesis/simd_synth_top.v`, which supplies variable instructions to the processor. It prints the cell hierarchy and saves statistics, tool version, parameters, command and source hashes to `results/synth_L4_W8.txt`. The count includes the datapath, data memory, PC and counters; instruction ROM is excluded. See [synthesis_and_performance.md](synthesis_and_performance.md) for what the numbers mean.
+
+## 5b. FPGA resources and maximum frequency
+
+```bash
+make synth_scaling          # generic synthesis for 1, 4 and 8 lanes -> results/synth_scaling.csv
+make fpga                   # Lattice ECP5-85F, 3 placement seeds per build -> results/fpga/, results/fpga_summary.csv
+make fpga FPGA_LANES=4 FPGA_SEEDS=1,2,3,4,5
+```
+
+`make fpga` needs the OSS CAD Suite (Homebrew has no `nextpnr-ecp5` package). On macOS, the first run of a downloaded binary may be blocked by Gatekeeper; allow it in System Settings → Privacy & Security, or run `xattr -dr com.apple.quarantine ~/tools/oss-cad-suite` once.
 
 ## 6. Build the report
 

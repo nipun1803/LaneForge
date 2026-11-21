@@ -11,9 +11,9 @@ Start here. The files are ordered so that each one builds on the previous one. I
 | 5 | [datapath_modules.md](datapath_modules.md) | Lane ALU, vector ALU, register file, lane MUX, result combiner |
 | 6 | [control_unit.md](control_unit.md) | How the decoder turns an instruction into control signals |
 | 7 | [top_level_processor.md](top_level_processor.md) | `simd_top`: memories, program counter, HALT, performance counters |
-| 8 | [programming_guide.md](programming_guide.md) | Writing a program, loading it, running it and reading the results |
-| 9 | [verification.md](verification.md) | How every module was tested, the results, and the planted-bug experiment |
-| 10 | [synthesis_and_performance.md](synthesis_and_performance.md) | Hardware cost from synthesis, and how scalar vs. SIMD performance will be measured |
+| 8 | [programming_guide.md](programming_guide.md) | Writing a program in assembly, the assembler, loading, running and reading the results |
+| 9 | [verification.md](verification.md) | How every module was tested, random-program testing against the ISA model, and the planted-bug experiments |
+| 10 | [synthesis_and_performance.md](synthesis_and_performance.md) | Hardware cost (generic and ECP5 FPGA), Fmax, and measured scalar vs. SIMD speedup |
 
 The formal write-up is the IEEE report: [report/main.pdf](report/main.pdf) (source: [report/main.tex](report/main.tex)). The Phase I submission is kept unchanged in [report/phase1/main.pdf](report/phase1/main.pdf).
 

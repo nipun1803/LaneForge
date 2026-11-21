@@ -2,16 +2,17 @@
 
 How to write a program for the processor, load it, run it and read the results. Instruction details are in [instruction_set.md](instruction_set.md).
 
-Until the assembler is written (Phase II), programs are written as hex words or built with the encoding macros in `rtl/simd_defs.vh`.
+Programs are written in assembly and turned into hex files by the assembler, [`scripts/lfasm.py`](../scripts/lfasm.py). Hand-written hex and the encoding macros in `rtl/simd_defs.vh` still work.
 
 ## The workflow
 
 ```mermaid
 flowchart LR
-    A["Write the program<br/>(assembly on paper)"] --> B["Encode each instruction<br/>to 16-bit hex"]
-    B --> C["Load into instruction memory<br/>(hex file or testbench)"]
-    C --> D["Load data into<br/>data memory"]
-    D --> E["Reset, then run<br/>until halted = 1"]
+    A["Write the program<br/>(prog.s)"] --> B["Assemble<br/>scripts/lfasm.py"]
+    B --> C["prog.hex<br/>instruction memory"]
+    B --> D["prog_data.hex<br/>data memory"]
+    C --> E["Reset, then run<br/>until halted = 1"]
+    D --> E
     E --> F["Read results through<br/>dbg_addr / dbg_rdata"]
 ```
 
@@ -59,11 +60,52 @@ HALT                    F000
 
 With `memory[0] = 0x07010903` (lane 3 to lane 0: 7, 1, 9, 3), the result is `memory[1] = 0x00010003` (0, 1, 0, 3) after 6 cycles, and `mask_status = 0101` (lanes 2 and 0 were below 5).
 
+## The assembler
+
+[`scripts/lfasm.py`](../scripts/lfasm.py) reads opcodes and field positions from `rtl/simd_defs.vh`, the header the RTL itself includes, so it always matches the hardware. It needs only Python 3.9+.
+
+```bash
+python3 scripts/lfasm.py programs/add.s              # -> programs/add.hex and programs/add_data.hex
+python3 scripts/lfasm.py prog.s --lanes 8 --width 8  # pack data words for an 8-lane build
+python3 scripts/lfasm.py prog.s --listing            # print address, hex and source
+python3 scripts/lfasm.py --disasm programs/add.hex   # hex back to assembly
+make asm                                             # assemble every programs/*.s
+make asm_test                                        # run the assembler's tests
+```
+
+Example 1 written for the assembler ([`programs/add.s`](../programs/add.s)):
+
+```asm
+        VLD   v1, [0]          ; v1 = memory[0]
+        VLD   v2, [1]          ; v2 = memory[1]
+        VADD  v3, v1, v2       ; v3 = v1 + v2 in all 4 lanes at once
+        VST   v3, [2]          ; memory[2] = v3
+        HALT
+
+        .org  0
+        .vec  1, 2, 3, 4       ; memory[0] = 0x04030201 (lane 0 first)
+        .vec  16, 16, 16, 16   ; memory[1] = 0x10101010
+```
+
+| Syntax | Meaning |
+|---|---|
+| `; …`, `# …`, `// …` | comment |
+| `VADD vd, vs1, vs2` / `VADD vd, vs1, s` | any R-type ALU or compare instruction; `s` selects the broadcast scalar as operand B |
+| `VBCAST vd`, `SLI imm`, `VLD vreg, [addr]`, `VST vreg, [addr]`, `NOP`, `HALT` | the other instructions; `SLI` accepts 0..255, or -128..-1 as an 8-bit pattern |
+| `.equ NAME, expr` | named constant |
+| `.org expr` | data-memory address for the next `.vec` / `.word` |
+| `.vec e0, e1, …` | one data word given lane by lane, lane 0 first; exactly `LANES` elements, each from -2<sup>W-1</sup> to 2<sup>W</sup>-1 |
+| `.word expr` | one raw `LANES × WIDTH`-bit data word |
+
+Expressions may use decimal, `0x` hex and `0b` binary numbers, `.equ` names, `+ - *` and brackets, e.g. `VLD v1, [BASE + 3]`. Mnemonics are not case-sensitive. Errors name the file and line (`prog.s:7: error: …`), and nothing is written when there is an error. The assembler warns about a program with no `HALT` and about `SLI` values that a narrow `WIDTH` would truncate.
+
+The data words are packed for the `LANES` and `WIDTH` given on the command line (default 4 × 8), so build the processor with the same values.
+
 ## Loading a program
 
 ### Option 1: hex files
 
-Write one hex word per line:
+The assembler writes these files; you can also write them by hand, one hex word per line:
 
 ```
 programs/add.hex          programs/add_data.hex
