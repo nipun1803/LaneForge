@@ -1,0 +1,66 @@
+# LaneForge random-program testing against the planted RTL bugs
+# Generated (UTC): 2026-11-23T14:22:41+00:00
+# Tools: Icarus Verilog version 13.0 (stable) (v13_0); Python 3.14.2
+# Seed: 1; programs per build: 300; cycle limit per program: 300
+# Reproduce: python3 scripts/random_verify.py --mutations --n 300 --seed 1
+# Source SHA-256 hashes:
+553a9a63d16f1730832b055182cb871c5b282e0474ae6127d5dd1a75bc75edba  Makefile
+472b91085ba98ad1533b76dad0b92e34808cb4747132010b0a30efc508e423ea  rtl/lane_alu.v
+fedc2643cce4b6933adb4a87787c280a597445aae0183274ef4cf5cf16d3a1eb  rtl/lane_mux.v
+854c5257c507a4b3279228d43e570046cb5dc38375c8c5a4fc1faea29434eba2  rtl/result_combiner.v
+80ca5a7ddb39ba6967a55fdce00f02e0e31723dce4e70a67ac44c8baef6b8289  rtl/simd_top.v
+c688810640b961c2588f2a65a0dd5e7ad9f1e75e40379ba5e072a4b753662e61  rtl/vector_alu.v
+bf045091f6a086e629074bf7e0482916b7496369f539760cf700d74849460f04  rtl/vector_control.v
+1ed302435f3c1487e5f0ee5cc5ab29fb739a66d7a429dd8b6c5f70ce0a616555  rtl/vector_regfile.v
+8144a0db539776884844ab290bf87e5a8806bb3661f079f4ae0b8f95e22eec25  rtl/simd_defs.vh
+f48292c58b06cd946339e8424b23a06830071c68f9940c4d67029cb8981b91f7  tb/prog_runner.v
+73b0a72608d0d45e58ef951eaa312617b521d34ad6447d0103dd923cc7b1493d  tb/tb_defs.v
+9081215958e44dd2ac09fc73fa4d57b6ea8070bcc9a3daf342fe9d60c1464ba9  tb/tb_lane_alu.v
+22290bab65564cd2e050c3d5230f9f6d8323db49f09e662c46206109709a1ac5  tb/tb_lane_mux.v
+2afb013a3b58e6608e618530405d4348dcb372754beee3eccfc48ea9bb5f7f70  tb/tb_result_combiner.v
+232e2a73f665ee2ef67b1b225928d7a3c01e6eb8df34f03242477edf147cfe68  tb/tb_simd_top.v
+2f19f95fed731234484258bf35e7fe480dc24649ebad1eb7f8c3e6ae12c51e4f  tb/tb_smoke.v
+a0efe20d85bdb392dd9a4b59478f4dffa331d77cc4559a2c990153260f7360b1  tb/tb_vector_alu.v
+5071a2328a199f32b56c7998820d0b27c2c99386c9572331ee1a58eb48adab5e  tb/tb_vector_control.v
+742358bec48aeab46f242e582603d9093f6b1a4617edd0b3376739e8051ba267  tb/tb_vector_regfile.v
+ba9bba5d3a7f8a31e0ed31b8648e016c71fda312b66f9833a76f70e1d1700278  tb/ref_alu.vh
+8c8a18c3e713036cccc40553ea45c1da018e4f29709a18a3d3355a824ee08360  scripts/bench.py
+146ca9a637ce23173aef78985fb168f3d379f93b22a2f0a665e05be9b78ec59f  scripts/fpga_flow.py
+19c1f9cac0225bdccda676697bf7a612d1c57614b137bbe6dacdd4611ade9302  scripts/lfasm.py
+b5a44814aaa01805605031fab31735b03b3aa07ccc6a06c16d755d56e6c402fe  scripts/lfmodel.py
+ea75944a911c7c96fe69c5c33855a4b10dd93fcc91921f568ffb76f0a9381767  scripts/lfrun.py
+1ba65e267a23edd96e601d600660acc8b07f15d6893342c23a3092ab10355699  scripts/mutation_cases.py
+6e229abf0926aa3f59f6b75588551f343f6a0a2c9848d73ded06fde1a4d14424  scripts/random_verify.py
+0c836f101422d91721973d381e1676c85a0e08d891a0a295079d14476aaa1cc6  scripts/report_tables.py
+841b3dc03d861238a6cdae8a367b5d79e19aa689646a2566923929e974d050e8  scripts/synth_scaling.py
+b97f0366f3d77fbf2689a727f025d51b339eb712b740c468f3c21bfc269da660  scripts/test_lfasm.py
+fb1f42d07ea4692e3b200de500d7e9f2846a3e37b8117db2283d5ea29b53d55f  scripts/test_lfmodel.py
+9b4d3d5f2187a7817f98988b4538ded13446dddc8776fb71acd57a44aecab54d  scripts/vcd_to_tikz.py
+b8e880812c24a8628929ec90905942141ab1af57597f30a78b897827947cd943  scripts/verify_evidence.py
+
+Each mutant from scripts/mutation_cases.py is built at its own LANES/WIDTH and run with the random programs only (no module testbenches). A mutant counts as detected when at least one program's final state differs from the ISA model; HANG means the simulation never finishes. The unmodified RTL passes the same programs.
+
+## Random programs alone: 19/23 detected by a state mismatch, 1 hang, 3 not detected, 0 errors
+M01 [DETECTED] L4_W8 rtl/vector_alu.v: ADD uses one whole-vector adder, leaking carries between lanes. 50/300 programs differ; first: mem[331]: rtl=0x2e2e2e2d model=0x2d2d2d2d
+M02 [DETECTED] L4_W8 rtl/vector_alu.v: Write-back lanes 0 and 1 are swapped. 138/300 programs differ; first: mem[0]: rtl=0x10101ff model=0x101ff01
+M03 [HANG] L4_W8 rtl/vector_regfile.v: Read port 1 forwards a pending write before the clock edge. the simulation does not finish within 60s (zero-delay combinational loop)
+M04 [DETECTED] L4_W8 rtl/vector_regfile.v: Read port 2 uses port 1's address. 226/300 programs differ; first: mask: rtl=0xf model=0x0
+M05 [DETECTED] L4_W8 rtl/vector_regfile.v: Reset leaves the scalar register uncleared. 155/300 programs differ; first: scalar: rtl=xx (unknown bits) model=0x0
+M06 [DETECTED] L4_W8 rtl/vector_regfile.v: Vector writes ignore their write enable. 193/300 programs differ; first: mask: rtl=0xf model=0x0
+M07 [DETECTED] L4_W8 rtl/lane_mux.v: Scalar broadcast drives only lane 0. 181/300 programs differ; first: v1: rtl=0x7f model=0x7f7f7f7f
+M08 [DETECTED] L4_W8 rtl/lane_mux.v: Operand selection is inverted. 236/300 programs differ; first: v0: rtl=0x1010101 model=0x0
+M09 [DETECTED] L4_W8 rtl/lane_mux.v: Scalar broadcast drives only the top lane. 180/300 programs differ; first: v1: rtl=0x7f000000 model=0x7f7f7f7f
+M10 [DETECTED] L4_W8 rtl/result_combiner.v: Memory and broadcast write-back sources are swapped. 269/300 programs differ; first: v1: rtl=0x0 model=0x7f7f7f7f
+M11 [NOT DETECTED] L4_W8 rtl/result_combiner.v: any_true observes lane 0 only. all 300 programs agree with the ISA model
+M12 [NOT DETECTED] L4_W8 rtl/result_combiner.v: Population count skips the top lane. all 300 programs agree with the ISA model
+M13 [NOT DETECTED] L4_W8 rtl/result_combiner.v: Reserved select passes the ALU result instead of zero. all 300 programs agree with the ISA model
+M14 [DETECTED] L4_W8 rtl/vector_control.v: VST also enables a vector-register write. 107/300 programs differ; first: mask: rtl=0xf model=0x0
+M15 [DETECTED] L4_W8 rtl/vector_control.v: ALU instructions ignore the scalar-selection bit. 189/300 programs differ; first: mem[0]: rtl=0xff00 model=0x101ff01
+M16 [DETECTED] L4_W8 rtl/vector_control.v: VST reads vs2 instead of the encoded store register. 169/300 programs differ; first: mem[92]: rtl=0x8000 model=0x0
+M17 [DETECTED] L4_W8 rtl/vector_control.v: VBCAST selects the memory write-back source. 141/300 programs differ; first: mask: rtl=0xd model=0x0
+M18 [DETECTED] L4_W8 rtl/vector_control.v: Missing halt default infers retained combinational state. 297/300 programs differ; first: steps: rtl=0x1 model=0xc
+M19 [DETECTED] L4_W8 rtl/simd_top.v: Stores take data from read port 1 instead of port 2. 175/300 programs differ; first: mem[92]: rtl=0xddf3fe7e model=0x0
+M20 [DETECTED] L4_W16 rtl/simd_top.v: SLI sign-extends its immediate instead of zero-extending. 125/300 programs differ; first: v1: rtl=0x1000200 model=0x0
+M21 [DETECTED] L4_W8 rtl/simd_top.v: lane_ops increments for every instruction. 300/300 programs differ; first: lane_ops: rtl=0x30 model=0x14
+M22 [DETECTED] L4_W8 rtl/simd_top.v: All ALU instructions update compare-mask status. 81/300 programs differ; first: mask: rtl=0x0 model=0xf
+M23 [DETECTED] L4_W8 rtl/simd_top.v: Vector ALU bypasses the scalar operand multiplexer. 189/300 programs differ; first: mem[0]: rtl=0xff00 model=0x101ff01
