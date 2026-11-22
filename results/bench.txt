@@ -1,0 +1,93 @@
+# LaneForge scalar-versus-SIMD benchmarks
+# Generated (UTC): 2026-11-23T14:22:41+00:00
+# Tools: Icarus Verilog version 13.0 (stable) (v13_0); Python 3.14.2
+# Build: WIDTH=8; LANES=1,4,8; N=8,16,32; data seed 1
+# Reproduce: make bench
+# Source SHA-256 hashes:
+553a9a63d16f1730832b055182cb871c5b282e0474ae6127d5dd1a75bc75edba  Makefile
+472b91085ba98ad1533b76dad0b92e34808cb4747132010b0a30efc508e423ea  rtl/lane_alu.v
+fedc2643cce4b6933adb4a87787c280a597445aae0183274ef4cf5cf16d3a1eb  rtl/lane_mux.v
+854c5257c507a4b3279228d43e570046cb5dc38375c8c5a4fc1faea29434eba2  rtl/result_combiner.v
+80ca5a7ddb39ba6967a55fdce00f02e0e31723dce4e70a67ac44c8baef6b8289  rtl/simd_top.v
+c688810640b961c2588f2a65a0dd5e7ad9f1e75e40379ba5e072a4b753662e61  rtl/vector_alu.v
+bf045091f6a086e629074bf7e0482916b7496369f539760cf700d74849460f04  rtl/vector_control.v
+1ed302435f3c1487e5f0ee5cc5ab29fb739a66d7a429dd8b6c5f70ce0a616555  rtl/vector_regfile.v
+8144a0db539776884844ab290bf87e5a8806bb3661f079f4ae0b8f95e22eec25  rtl/simd_defs.vh
+f48292c58b06cd946339e8424b23a06830071c68f9940c4d67029cb8981b91f7  tb/prog_runner.v
+73b0a72608d0d45e58ef951eaa312617b521d34ad6447d0103dd923cc7b1493d  tb/tb_defs.v
+9081215958e44dd2ac09fc73fa4d57b6ea8070bcc9a3daf342fe9d60c1464ba9  tb/tb_lane_alu.v
+22290bab65564cd2e050c3d5230f9f6d8323db49f09e662c46206109709a1ac5  tb/tb_lane_mux.v
+2afb013a3b58e6608e618530405d4348dcb372754beee3eccfc48ea9bb5f7f70  tb/tb_result_combiner.v
+232e2a73f665ee2ef67b1b225928d7a3c01e6eb8df34f03242477edf147cfe68  tb/tb_simd_top.v
+2f19f95fed731234484258bf35e7fe480dc24649ebad1eb7f8c3e6ae12c51e4f  tb/tb_smoke.v
+a0efe20d85bdb392dd9a4b59478f4dffa331d77cc4559a2c990153260f7360b1  tb/tb_vector_alu.v
+5071a2328a199f32b56c7998820d0b27c2c99386c9572331ee1a58eb48adab5e  tb/tb_vector_control.v
+742358bec48aeab46f242e582603d9093f6b1a4617edd0b3376739e8051ba267  tb/tb_vector_regfile.v
+ba9bba5d3a7f8a31e0ed31b8648e016c71fda312b66f9833a76f70e1d1700278  tb/ref_alu.vh
+8c8a18c3e713036cccc40553ea45c1da018e4f29709a18a3d3355a824ee08360  scripts/bench.py
+146ca9a637ce23173aef78985fb168f3d379f93b22a2f0a665e05be9b78ec59f  scripts/fpga_flow.py
+19c1f9cac0225bdccda676697bf7a612d1c57614b137bbe6dacdd4611ade9302  scripts/lfasm.py
+b5a44814aaa01805605031fab31735b03b3aa07ccc6a06c16d755d56e6c402fe  scripts/lfmodel.py
+ea75944a911c7c96fe69c5c33855a4b10dd93fcc91921f568ffb76f0a9381767  scripts/lfrun.py
+1ba65e267a23edd96e601d600660acc8b07f15d6893342c23a3092ab10355699  scripts/mutation_cases.py
+6e229abf0926aa3f59f6b75588551f343f6a0a2c9848d73ded06fde1a4d14424  scripts/random_verify.py
+0c836f101422d91721973d381e1676c85a0e08d891a0a295079d14476aaa1cc6  scripts/report_tables.py
+841b3dc03d861238a6cdae8a367b5d79e19aa689646a2566923929e974d050e8  scripts/synth_scaling.py
+b97f0366f3d77fbf2689a727f025d51b339eb712b740c468f3c21bfc269da660  scripts/test_lfasm.py
+fb1f42d07ea4692e3b200de500d7e9f2846a3e37b8117db2283d5ea29b53d55f  scripts/test_lfmodel.py
+9b4d3d5f2187a7817f98988b4538ded13446dddc8776fb71acd57a44aecab54d  scripts/vcd_to_tikz.py
+b8e880812c24a8628929ec90905942141ab1af57597f30a78b897827947cd943  scripts/verify_evidence.py
+
+Workloads (the ISA has no branches, so every loop is fully unrolled):
+  W1  C = A + B            per vector: VLD, VLD, VADD, VST                 4N/L + 1 cycles
+  W2  count(A < T)         per vector: VLD, VCMPLT s, VSUB (acc -= mask)   3N/L + 3 cycles
+      A compare writes -1 (all ones) to true lanes, so subtracting it adds 1.
+      The result is one partial count per lane; the L partial counts still
+      have to be added, which this ISA cannot do across lanes.
+  W3  C = (A AND M) OR B   per vector: VLD x3, VAND, VOR, VST              6N/L + 1 cycles
+  W4  Y = a*X + b          per vector: VLD, VMUL s, VADD, VST              4N/L + 4 cycles
+Only the Python standard library is used; needs Icarus Verilog.
+
+
+Every row is checked three ways: outputs against Python, full final state against the ISA model,
+and cycle count against the formula. Speedup = cycles(L=1) / cycles(L); same N, same data.
+
+wl    N  L instr cycles  pred lane_ops speedup w/ reduce elem/cyc ops/cyc  result
+W1    8  1    33     33    33        8    1.00      1.00    0.242   0.242  PASS
+W1    8  4     9      9     9        8    3.67      3.67    0.889   0.889  PASS
+W1    8  8     5      5     5        8    6.60      6.60    1.600   1.600  PASS
+W1   16  1    65     65    65       16    1.00      1.00    0.246   0.246  PASS
+W1   16  4    17     17    17       16    3.82      3.82    0.941   0.941  PASS
+W1   16  8     9      9     9       16    7.22      7.22    1.778   1.778  PASS
+W1   32  1   129    129   129       32    1.00      1.00    0.248   0.248  PASS
+W1   32  4    33     33    33       32    3.91      3.91    0.970   0.970  PASS
+W1   32  8    17     17    17       32    7.59      7.59    1.882   1.882  PASS
+W2    8  1    27     27    27       16    1.00      1.00    0.296   0.593  PASS
+W2    8  4     9      9     9       16    3.00      2.25    0.889   1.778  PASS
+W2    8  8     6      6     6       16    4.50      2.08    1.333   2.667  PASS
+W2   16  1    51     51    51       32    1.00      1.00    0.314   0.627  PASS
+W2   16  4    15     15    15       32    3.40      2.83    1.067   2.133  PASS
+W2   16  8     9      9     9       32    5.67      3.19    1.778   3.556  PASS
+W2   32  1    99     99    99       64    1.00      1.00    0.323   0.646  PASS
+W2   32  4    27     27    27       64    3.67      3.30    1.185   2.370  PASS
+W2   32  8    15     15    15       64    6.60      4.50    2.133   4.267  PASS
+W3    8  1    49     49    49       16    1.00      1.00    0.163   0.327  PASS
+W3    8  4    13     13    13       16    3.77      3.77    0.615   1.231  PASS
+W3    8  8     7      7     7       16    7.00      7.00    1.143   2.286  PASS
+W3   16  1    97     97    97       32    1.00      1.00    0.165   0.330  PASS
+W3   16  4    25     25    25       32    3.88      3.88    0.640   1.280  PASS
+W3   16  8    13     13    13       32    7.46      7.46    1.231   2.462  PASS
+W3   32  1   193    193   193       64    1.00      1.00    0.166   0.332  PASS
+W3   32  4    49     49    49       64    3.94      3.94    0.653   1.306  PASS
+W3   32  8    25     25    25       64    7.72      7.72    1.280   2.560  PASS
+W4    8  1    36     36    36       16    1.00      1.00    0.222   0.444  PASS
+W4    8  4    12     12    12       16    3.00      3.00    0.667   1.333  PASS
+W4    8  8     8      8     8       16    4.50      4.50    1.000   2.000  PASS
+W4   16  1    68     68    68       32    1.00      1.00    0.235   0.471  PASS
+W4   16  4    20     20    20       32    3.40      3.40    0.800   1.600  PASS
+W4   16  8    12     12    12       32    5.67      5.67    1.333   2.667  PASS
+W4   32  1   132    132   132       64    1.00      1.00    0.242   0.485  PASS
+W4   32  4    36     36    36       64    3.67      3.67    0.889   1.778  PASS
+W4   32  8    20     20    20       64    6.60      6.60    1.600   3.200  PASS
+
+ALL PASS
