@@ -130,9 +130,10 @@ class CoverageMachine(Machine):
                 c[f"scalar operand {OPCODE_NAMES[op]}"] += 1
             if instr & 3:
                 c["ignored bits set (R-type)"] += 1
-            if self.last_written in (vs1, None if s else vs2):
+            sources = (vs1,) if s else (vs1, vs2)          # with s = 1, vs2 is not read
+            if self.last_written is not None and self.last_written in sources:
                 c["reads register written by previous instruction"] += 1
-            if vd in (vs1, None if s else vs2):
+            if vd in sources:
                 c["destination is also a source"] += 1
             for x, y in zip(a, b):
                 if op == VADD and x + y > self.lane_mask:
@@ -217,7 +218,7 @@ def check_config(lanes, width, count, seed, work, args, rtl_dir=None, timeout=60
         if diffs:
             failures.append((index, words, data, diffs))
     return {"lanes": lanes, "width": width, "programs": count, "executed": executed,
-            "coverage": coverage, "failures": failures,
+            "coverage": coverage, "failures": failures, "goals": len(coverage_goals(lanes, width)),
             "holes": [g for g in coverage_goals(lanes, width) if not coverage[g]]}
 
 
@@ -270,7 +271,8 @@ def verify(args, configs):
         status = "PASS" if not r["failures"] and not r["holes"] else "FAIL"
         report += (f"L{r['lanes']}_W{r['width']}: {status}, {r['programs']} programs, "
                    f"{r['executed']} instructions executed, {r['programs'] * STATE_VALUES} state values compared, "
-                   f"{len(r['failures'])} mismatches, coverage holes: {', '.join(r['holes']) or 'none'}\n")
+                   f"{len(r['failures'])} mismatches, {r['goals'] - len(r['holes'])}/{r['goals']} applicable "
+                   f"coverage goals hit, holes: {', '.join(r['holes']) or 'none'}\n")
     report += (f"\nTotal: {total_programs} programs, {total_executed} instructions executed, "
                f"{total_programs * STATE_VALUES} state values compared "
                f"({STATE_VALUES} per program: {len(lfrun.FIELDS)} status values, 8 vector registers, 512 memory words); "
@@ -278,7 +280,8 @@ def verify(args, configs):
     merged = Counter()
     for r in results:
         merged.update(r["coverage"])
-    report += "\n## Functional coverage, all builds together (times each goal was hit)\n"
+    report += ("\n## Functional coverage, all builds together (times each goal was hit)\n"
+               "Goals that depend on the build (per-lane compares, narrow-width SLI) apply only where they exist.\n")
     goals = []
     for r in results:
         goals += [g for g in coverage_goals(r["lanes"], r["width"]) if g not in goals]

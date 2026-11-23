@@ -94,11 +94,14 @@ mutation_tests:
 # The example programs are written for the default LANES=4, WIDTH=8 build.
 ASM_SRCS := $(wildcard programs/*.s)
 ASM_HEX  := $(ASM_SRCS:.s=.hex)
+ASM_DATA := $(ASM_SRCS:.s=_data.hex)
 
-programs/%.hex: programs/%.s scripts/lfasm.py $(RTL_DIR)/simd_defs.vh
+# One assembler run writes both files (a pattern rule with two targets is run
+# once for both), so deleting either one makes `make asm` rebuild it.
+programs/%.hex programs/%_data.hex: programs/%.s scripts/lfasm.py $(RTL_DIR)/simd_defs.vh
 	$(PYTHON) scripts/lfasm.py $< --lanes 4 --width 8
 
-asm: $(ASM_HEX)
+asm: $(ASM_HEX) $(ASM_DATA)
 
 asm_test:
 	$(PYTHON) scripts/test_lfasm.py

@@ -114,7 +114,7 @@ throughput  = lane_ops / cycle_count           (element operations per cycle)
 | W3 | `C = (A AND M) OR B` | `VLD ×3, VAND, VOR, VST` | 6N/L + 1 |
 | W4 | `Y = a·X + b` (8-bit wrap-around) | `VLD, VMUL s, VADD, VST` | 4N/L + 4 |
 
-W2 uses a trick: a true compare writes −1 (all ones) to its lane, so subtracting the compare result adds 1 to that lane's count. It ends with one partial count per lane. Adding the `L` partial counts needs a cross-lane (horizontal) add, which this ISA does not have; the "with reduction" column charges `L − 1` extra cycles for it.
+W2 uses a trick: a true compare writes −1 (all ones) to its lane, so subtracting the compare result adds 1 to that lane's count. It ends with one partial count per lane. Adding the `L` partial counts needs a cross-lane (horizontal) add, which this ISA does not have. The "est. with lane sum" figures are an **estimate** that charges `L − 1` extra cycles for it; those cycles are assumed, not executed or measured.
 
 ```bash
 make bench                     # -> results/bench.csv and results/bench.txt
@@ -127,7 +127,7 @@ All rows match the predicted cycle count exactly and pass all three checks ([ful
 | Workload | Cycles L=1 | L=4 | L=8 | Speedup L=4 | Speedup L=8 | Elements/cycle L=1 → L=8 |
 |---|---:|---:|---:|---:|---:|---|
 | W1 add | 129 | 33 | 17 | 3.91× | 7.59× | 0.25 → 1.88 |
-| W2 count | 99 | 27 | 15 | 3.67× (3.30× with reduction) | 6.60× (4.50×) | 0.32 → 2.13 |
+| W2 count | 99 | 27 | 15 | 3.67× (est. 3.30× with lane sum) | 6.60× (est. 4.50×) | 0.32 → 2.13 |
 | W3 mask | 193 | 49 | 25 | 3.94× | 7.72× | 0.17 → 1.28 |
 | W4 a·X+b | 132 | 36 | 20 | 3.67× | 6.60× | 0.24 → 1.60 |
 
@@ -139,7 +139,7 @@ xychart-beta
     bar [3.91, 7.59, 3.67, 6.60, 3.94, 7.72, 3.67, 6.60]
 ```
 
-**Why the speedup is below `L`.** The per-vector work shrinks by exactly `L`, but the setup instructions (`SLI`, `VBCAST`) and the final `HALT` do not (Amdahl's law). W3 has the most work per vector and the least fixed overhead, so it comes closest to `L`; W2 and W4 carry three or four fixed instructions. For small `N` the effect is larger: at `N = 8` the 8-lane speedup is only 4.5× for W2 and W4. W2 loses more once the cross-lane sum is counted (4.50× instead of 6.60× at `L = 8`), which shows why real SIMD ISAs include horizontal-add or reduction instructions.
+**Why the speedup is below `L`.** The per-vector work shrinks by exactly `L`, but the setup instructions (`SLI`, `VBCAST`) and the final `HALT` do not (Amdahl's law). W3 has the most work per vector and the least fixed overhead, so it comes closest to `L`; W2 and W4 carry three or four fixed instructions. For small `N` the effect is larger: at `N = 8` the 8-lane speedup is only 4.5× for W2 and W4. W2 would lose more once the cross-lane sum is charged (an estimated 4.50× instead of 6.60× at `L = 8`), which shows why real SIMD ISAs include horizontal-add or reduction instructions.
 
 ### Clock frequency
 
@@ -148,7 +148,7 @@ Wider designs have longer wires, so the clock gets slower. The real benefit is t
 | Workload (N = 32) | 4 lanes: cycles × clock = effective | 8 lanes: cycles × clock = effective |
 |---|---|---|
 | W1 add | 3.91 × 0.924 = **3.61×** | 7.59 × 0.868 = **6.58×** |
-| W2 count (with reduction) | 3.30 × 0.924 = **3.05×** | 4.50 × 0.868 = **3.90×** |
+| W2 count (est. with lane sum) | 3.30 × 0.924 = **3.05×** | 4.50 × 0.868 = **3.90×** |
 | W3 mask | 3.94 × 0.924 = **3.64×** | 7.72 × 0.868 = **6.70×** |
 | W4 a·X+b | 3.67 × 0.924 = **3.39×** | 6.60 × 0.868 = **5.73×** |
 

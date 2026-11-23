@@ -79,6 +79,9 @@ class Syntax(unittest.TestCase):
                       "VST v1, BASE*(1+1)\nSLI -(1)\nSLI 0b1010\nHALT")
         self.assertEqual(program.words, [0xC215, 0xD220, 0xB0FF, 0xB00A, 0xF000])
 
+    def test_leading_zero_decimals(self):
+        self.assertEqual(asm("SLI 08\nVLD v1, [009]\nSLI 0x08\nHALT").words, [0xB008, 0xC209, 0xB008, 0xF000])
+
     def test_vec_packing_lane0_first(self):
         program = asm(".org 3\n.vec 1, 2, 3, -1\n.word 0xDEADBEEF\nHALT")
         self.assertEqual(program.data, {3: 0xFF030201, 4: 0xDEADBEEF})
@@ -165,6 +168,16 @@ class CommandLine(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("1  F000  HALT", out)
 
+    def test_removed_data_does_not_survive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "p.s"
+            source.write_text("VLD v1, [0]\nHALT\n.vec 1, 2, 3, 4\n")
+            self.assertEqual(self.run_cli(str(source))[0], 0)
+            self.assertEqual((Path(tmp) / "p_data.hex").read_text(), "04030201\n")
+            source.write_text("VLD v1, [0]\nHALT\n")
+            self.assertEqual(self.run_cli(str(source))[0], 0)
+            self.assertEqual((Path(tmp) / "p_data.hex").read_text(), "")
+
     def test_error_reports_file_and_line(self):
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "bad.s"
@@ -172,6 +185,10 @@ class CommandLine(unittest.TestCase):
             code, _, err = self.run_cli(str(source))
             self.assertEqual(code, 1)
             self.assertIn("bad.s:2: error:", err)
+            source.write_text("SLI 1 2\n")
+            code, _, err = self.run_cli(str(source))
+            self.assertEqual(code, 1)
+            self.assertIn("bad.s:1: error:", err)
             self.assertFalse((Path(tmp) / "bad.hex").exists())
 
 

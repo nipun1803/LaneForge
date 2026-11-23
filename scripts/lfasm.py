@@ -106,7 +106,10 @@ def evaluate(text, symbols, line):
     tokens = []
     for number, name, other in _TOKEN.findall(text.strip()):
         if number:
-            tokens.append(("num", int(number.replace("_", ""), 0)))
+            digits = number.replace("_", "")
+            # 0x / 0b prefixes are hex / binary; everything else is decimal, so "08" is 8
+            base = 0 if digits[:2].lower() in ("0x", "0b") else 10
+            tokens.append(("num", int(digits, base)))
         elif name:
             key = name.upper()
             if key not in symbols:
@@ -378,7 +381,7 @@ def main(argv=None):
                                      epilog=__doc__.split("\n\n", 1)[1])
     parser.add_argument("source", help="assembly file (.s), or a .hex file with --disasm")
     parser.add_argument("-o", "--output", help="instruction hex file (default: SOURCE.hex)")
-    parser.add_argument("-d", "--data", help="data hex file (default: SOURCE_data.hex, written only if the source has data)")
+    parser.add_argument("-d", "--data", help="data hex file (default: SOURCE_data.hex; always written, empty when the source has no data)")
     parser.add_argument("--lanes", type=int, default=4, help="LANES the data words are packed for (default 4)")
     parser.add_argument("--width", type=int, default=8, help="WIDTH of each lane in bits (default 8)")
     parser.add_argument("--listing", action="store_true", help="print address, hex and source for each instruction")
@@ -407,10 +410,11 @@ def main(argv=None):
     output = Path(args.output) if args.output else source.with_suffix(".hex")
     _write(output, program.imem_text())
     written = [str(output)]
-    if program.data or args.data:
-        data = Path(args.data) if args.data else source.with_name(source.stem + "_data.hex")
-        _write(data, program.dmem_text())
-        written.append(str(data))
+    # Always write the data file (empty when the source has no data), so an old
+    # data image can never survive a reassembly and be loaded by mistake.
+    data = Path(args.data) if args.data else source.with_name(source.stem + "_data.hex")
+    _write(data, program.dmem_text())
+    written.append(str(data))
     if args.listing:
         for address, (word, (line, text)) in enumerate(zip(program.words, program.source)):
             print(f"{address:3d}  {word:04X}  {text}")

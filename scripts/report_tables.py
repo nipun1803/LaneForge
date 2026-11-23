@@ -56,8 +56,13 @@ def main():
         raise ValueError("random verification did not pass")
     goals = len(re.findall(r"^\s+\d+  \S", random_text.split("## Functional coverage", 1)[1], re.MULTILINE))
     builds = len(re.findall(r"^L\d+_W\d+: PASS", random_text, re.MULTILINE))
+    applicable = [int(t) for h, t in re.findall(r"(\d+)/(\d+) applicable coverage goals hit", random_text)]
+    hit = [int(h) for h, t in re.findall(r"(\d+)/(\d+) applicable coverage goals hit", random_text)]
+    if len(applicable) != builds or hit != applicable:
+        raise ValueError("per-build coverage line missing or a goal was missed")
     macros.update(RandPrograms=num(int(total.group(1))), RandInstr=num(int(total.group(2))),
                   RandValues=num(int(total.group(3))), RandGoals=str(goals), RandBuilds=str(builds),
+                  RandGoalsMin=str(min(applicable)), RandGoalsMax=str(max(applicable)),
                   RandPerBuild=num(int(total.group(1)) // builds))
     mut_text = (RESULTS / "random_mutations.txt").read_text()
     m = find(r"^## Random programs alone: (\d+)/(\d+) detected by a state mismatch, (\d+) hang, (\d+) not detected",
@@ -83,8 +88,8 @@ def main():
         e1, e8 = float(by[(w, 1)]["elements_per_cycle"]), float(by[(w, 8)]["elements_per_cycle"])
         extra = ""
         if w == "W2":
-            extra = (f" \\\\ \\quad with lane sum & & & & ({float(by[(w, 4)]['speedup_with_reduction']):.2f}) & "
-                     f"({float(by[(w, 8)]['speedup_with_reduction']):.2f}) & ")
+            extra = (f" \\\\ \\quad est.\\ with lane sum$^\\ddagger$ & & & & ({float(by[(w, 4)]['speedup_est_with_lane_sum']):.2f}) & "
+                     f"({float(by[(w, 8)]['speedup_est_with_lane_sum']):.2f}) & ")
         lines.append(f"{names[w]} & {c[0]} & {c[1]} & {c[2]} & {s4:.2f} & {s8:.2f} & {e1:.2f}\\,$\\to$\\,{e8:.2f}{extra} \\\\")
     out.append("\\newcommand{\\BenchRows}{%\n" + "\n".join(lines) + "}")
     coords4 = " ".join(f"({w},{float(by[(w, 4)]['speedup']):.2f})" for w in ("W1", "W2", "W3", "W4"))
@@ -94,7 +99,7 @@ def main():
     for w, key in (("W1", "One"), ("W2", "Two"), ("W3", "Three"), ("W4", "Four")):
         macros[f"Speedup{key}Four"] = f"{float(by[(w, 4)]['speedup']):.2f}"
         macros[f"Speedup{key}Eight"] = f"{float(by[(w, 8)]['speedup']):.2f}"
-    macros["SpeedupTwoEightRed"] = f"{float(by[('W2', 8)]['speedup_with_reduction']):.2f}"
+    macros["SpeedupTwoEightRed"] = f"{float(by[('W2', 8)]['speedup_est_with_lane_sum']):.2f}"
     small = {r["workload"]: r for r in rows("bench.csv") if int(r["n"]) == 8 and int(r["lanes"]) == 8}
     macros["SpeedupTwoEightSmall"] = f"{float(small['W2']['speedup']):.2f}"
 
@@ -143,7 +148,7 @@ def main():
                   PathEight=f"{float(fpga[8]['critical_path_ns']):.1f}")
     lines = []
     for w in ("W1", "W2", "W3", "W4"):
-        key = "speedup_with_reduction" if w == "W2" else "speedup"
+        key = "speedup_est_with_lane_sum" if w == "W2" else "speedup"
         e4 = float(by[(w, 4)][key]) * f[4] / f[1]
         e8 = float(by[(w, 8)][key]) * f[8] / f[1]
         if w == "W1":

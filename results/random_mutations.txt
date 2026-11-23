@@ -1,10 +1,10 @@
 # LaneForge random-program testing against the planted RTL bugs
-# Generated (UTC): 2026-11-23T14:22:41+00:00
+# Generated (UTC): 2026-11-23T16:49:16+00:00
 # Tools: Icarus Verilog version 13.0 (stable) (v13_0); Python 3.14.2
 # Seed: 1; programs per build: 300; cycle limit per program: 300
 # Reproduce: python3 scripts/random_verify.py --mutations --n 300 --seed 1
 # Source SHA-256 hashes:
-553a9a63d16f1730832b055182cb871c5b282e0474ae6127d5dd1a75bc75edba  Makefile
+88d42b5ccc76de5ccdeb1f063b2bbddd4708762aa416de072daab399b3564de4  Makefile
 472b91085ba98ad1533b76dad0b92e34808cb4747132010b0a30efc508e423ea  rtl/lane_alu.v
 fedc2643cce4b6933adb4a87787c280a597445aae0183274ef4cf5cf16d3a1eb  rtl/lane_mux.v
 854c5257c507a4b3279228d43e570046cb5dc38375c8c5a4fc1faea29434eba2  rtl/result_combiner.v
@@ -24,16 +24,16 @@ a0efe20d85bdb392dd9a4b59478f4dffa331d77cc4559a2c990153260f7360b1  tb/tb_vector_a
 5071a2328a199f32b56c7998820d0b27c2c99386c9572331ee1a58eb48adab5e  tb/tb_vector_control.v
 742358bec48aeab46f242e582603d9093f6b1a4617edd0b3376739e8051ba267  tb/tb_vector_regfile.v
 ba9bba5d3a7f8a31e0ed31b8648e016c71fda312b66f9833a76f70e1d1700278  tb/ref_alu.vh
-8c8a18c3e713036cccc40553ea45c1da018e4f29709a18a3d3355a824ee08360  scripts/bench.py
+350429cf73c5163ed0a5b7417d2a476f039547c158887668492ce43949c95b24  scripts/bench.py
 146ca9a637ce23173aef78985fb168f3d379f93b22a2f0a665e05be9b78ec59f  scripts/fpga_flow.py
-19c1f9cac0225bdccda676697bf7a612d1c57614b137bbe6dacdd4611ade9302  scripts/lfasm.py
+5e3e09170ea074ddd114ee4201791813b2d56da9dd35f6321b6fff24c284d43f  scripts/lfasm.py
 b5a44814aaa01805605031fab31735b03b3aa07ccc6a06c16d755d56e6c402fe  scripts/lfmodel.py
 ea75944a911c7c96fe69c5c33855a4b10dd93fcc91921f568ffb76f0a9381767  scripts/lfrun.py
 1ba65e267a23edd96e601d600660acc8b07f15d6893342c23a3092ab10355699  scripts/mutation_cases.py
-6e229abf0926aa3f59f6b75588551f343f6a0a2c9848d73ded06fde1a4d14424  scripts/random_verify.py
-0c836f101422d91721973d381e1676c85a0e08d891a0a295079d14476aaa1cc6  scripts/report_tables.py
+7236d6fad1937e5f9d3f9208bc60f5e379cb1ef595bfb3b0015ee988092d3534  scripts/random_verify.py
+a4af0b18515e5262251154194e67caed7f7f9b6269ceada2a608af23fe9cd75f  scripts/report_tables.py
 841b3dc03d861238a6cdae8a367b5d79e19aa689646a2566923929e974d050e8  scripts/synth_scaling.py
-b97f0366f3d77fbf2689a727f025d51b339eb712b740c468f3c21bfc269da660  scripts/test_lfasm.py
+af19638925196290f4b2ecf3763b229df175c8e9d1fc43fd1cfd56b7886840e4  scripts/test_lfasm.py
 fb1f42d07ea4692e3b200de500d7e9f2846a3e37b8117db2283d5ea29b53d55f  scripts/test_lfmodel.py
 9b4d3d5f2187a7817f98988b4538ded13446dddc8776fb71acd57a44aecab54d  scripts/vcd_to_tikz.py
 b8e880812c24a8628929ec90905942141ab1af57597f30a78b897827947cd943  scripts/verify_evidence.py

@@ -666,11 +666,13 @@ For each of the twelve builds, a seeded generator produces programs of up to
 from a small pool so that stores are re-read and overwritten, and inserts
 occasional mid-program \texttt{HALT}s; every 40th program is a full 256-word
 image without \texttt{HALT}, which wraps the program counter. The model
-records \RandGoals{} functional-coverage goals (each opcode, each ALU opcode with the
+records functional-coverage goals (each opcode, each ALU opcode with the
 scalar operand, each lane's compare true and false, carries, borrows,
 multiply overflow, shift amounts $\ge W$, signed compares across zero,
 store-to-load hazards, back-to-back dependencies, ignored bits and PC
-wrap-around), and a build fails if any goal is missed.
+wrap-around). Goals that depend on the build, such as one compare goal per
+lane, exist only where they apply, so a build has between \RandGoalsMin{} and
+\RandGoalsMax{} goals, and it fails if any applicable goal is missed.
 
 \subsection{Benchmark workloads}
 Table~\ref{tab:work} lists the four kernels. A generator writes each kernel in
@@ -682,8 +684,9 @@ final state against the ISA model, and the cycle count against the formula.
 W2 uses the fact that a true compare writes $-1$ to its lane: subtracting the
 compare result adds one to that lane's count, giving three instructions per
 vector. It leaves one partial count per lane, because the ISA has no
-cross-lane (horizontal) add. We therefore also report W2 with $L-1$ extra
-cycles for summing the lanes. Speedup and time speedup are
+cross-lane (horizontal) add. We therefore also give an \emph{estimate} for W2
+that charges $L-1$ extra cycles for summing the lanes; those cycles are
+assumed, not executed. Speedup and time speedup are
 \begin{equation}
 S(L) = \frac{\text{cycles}(1)}{\text{cycles}(L)},\qquad
 S_t(L) = S(L)\,\frac{F_{\max}(L)}{F_{\max}(1)} .
@@ -730,8 +733,9 @@ $L=1,4,8$ and $W=2,4,8,16$, with \ModuleChecks{} checks at $L=4$, $W=8$
 (Table~\ref{tab:ver}), and detect all \UnitMutDetected{} planted RTL faults.
 Random-program verification ran \RandPerBuild{} programs on each of the
 \RandBuilds{} builds: \RandPrograms{} programs, \RandInstr{} executed
-instructions and \RandValues{} compared state values, with no mismatch. All
-\RandGoals{} coverage goals were hit on every build.
+instructions and \RandValues{} compared state values, with no mismatch. Every
+applicable coverage goal was hit on every build (\RandGoalsMin{} to
+\RandGoalsMax{} goals per build).
 
 Running only the random programs against the same \MutTotal{} faults shows how
 the two methods differ. \RandMutDetected{} faults change the final state and
@@ -752,9 +756,10 @@ and has only one fixed instruction (\texttt{HALT}), reaching
 setup and final instructions that do not shrink with $L$, so their speedup
 saturates sooner (\SpeedupFourEight$\times$ at $L=8$), as Amdahl's
 law~\cite{amdahl1967} predicts. The effect grows for short arrays: at $N=8$
-the 8-lane W2 reaches only \SpeedupTwoEightSmall$\times$. Counting the
-cross-lane sum lowers W2 at $L=8$ from \SpeedupTwoEight$\times$ to
-\SpeedupTwoEightRed$\times$, which shows why commercial SIMD instruction sets
+the 8-lane W2 reaches only \SpeedupTwoEightSmall$\times$. Charging an
+estimated $L-1$ cycles for the cross-lane sum, which this ISA cannot perform,
+would lower W2 at $L=8$ from \SpeedupTwoEight$\times$ to about
+\SpeedupTwoEightRed$\times$. This shows why commercial SIMD instruction sets
 include horizontal-add or reduction instructions.
 
 \begin{table}[t]
@@ -771,6 +776,7 @@ Kernel & $L{=}1$ & $L{=}4$ & $L{=}8$ & $L{=}4$ & $L{=}8$ & per cycle \\
 \midrule
 \BenchRows
 \bottomrule
+\multicolumn{7}{@{}l}{\scriptsize $^\ddagger$ estimate: $L-1$ assumed cycles for the per-lane sum (not executed)}
 \end{tabular}
 \end{table}
 
@@ -850,7 +856,8 @@ wider vectors spread the memory and register file across more of the chip.
 Table~\ref{tab:eff} combines cycles and clock: the 8-lane build loses
 \ClockLossEight\% of its clock but still adds two arrays
 \EffOneEight$\times$ faster in time, using \CombRatioEight$\times$ the logic
-cells. The cross-lane sum is the weak point: W2 gains only 3.9$\times$ in time.
+cells. The cross-lane sum is the weak point: with the estimated lane-sum
+cycles, W2 gains only about 3.9$\times$ in time.
 
 \begin{table}[t]
 \centering
@@ -866,7 +873,7 @@ Kernel & $L{=}1$ & $L{=}8$ & $L{=}4$ & $L{=}8$ \\
 \midrule
 \EffRows
 \bottomrule
-\multicolumn{5}{@{}l}{\scriptsize $^\dagger$ including $L-1$ cycles to add the per-lane partial counts}
+\multicolumn{5}{@{}l}{\scriptsize $^\dagger$ estimate: $+(L-1)$ assumed lane-sum cycles}
 \end{tabular}
 \end{table}
 

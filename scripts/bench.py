@@ -16,7 +16,9 @@ Workloads (the ISA has no branches, so every loop is fully unrolled):
   W2  count(A < T)         per vector: VLD, VCMPLT s, VSUB (acc -= mask)   3N/L + 3 cycles
       A compare writes -1 (all ones) to true lanes, so subtracting it adds 1.
       The result is one partial count per lane; the L partial counts still
-      have to be added, which this ISA cannot do across lanes.
+      have to be added, which this ISA cannot do across lanes. The column
+      "est. +sum" is an ESTIMATE that charges L-1 extra cycles for that sum;
+      those cycles are assumed, not executed or measured.
   W3  C = (A AND M) OR B   per vector: VLD x3, VAND, VOR, VST              6N/L + 1 cycles
   W4  Y = a*X + b          per vector: VLD, VMUL s, VADD, VST              4N/L + 4 cycles
 Only the Python standard library is used; needs Icarus Verilog.
@@ -170,8 +172,9 @@ def run(args):
         r["speedup"] = base[(r["workload"], r["n"])] / r["cycles"]
         r["elements_per_cycle"] = r["n"] / r["cycles"]
         r["lane_ops_per_cycle"] = r["lane_ops"] / r["cycles"]
-        # W2 leaves L partial counts; adding them needs L-1 more additions (counted as cycles).
-        r["speedup_with_reduction"] = (base[(r["workload"], r["n"])] / (r["cycles"] + r["lanes"] - 1)
+        # W2 leaves L partial counts. Adding them would need L-1 more additions, which this
+        # ISA cannot do; this column is an estimate that assumes L-1 extra cycles (not executed).
+        r["speedup_est_with_lane_sum"] = (base[(r["workload"], r["n"])] / (r["cycles"] + r["lanes"] - 1)
                                        if r["workload"] == "W2" else r["speedup"])
     rows.sort(key=lambda r: (r["workload"], r["n"], r["lanes"]))
     return rows, problems, sources
@@ -187,7 +190,7 @@ def tool_line(command):
 
 def write_results(rows, problems, sources, args):
     columns = ["workload", "task", "n", "lanes", "instructions", "cycles", "predicted_cycles", "lane_ops",
-               "speedup", "speedup_with_reduction", "elements_per_cycle", "lane_ops_per_cycle", "result"]
+               "speedup", "speedup_est_with_lane_sum", "elements_per_cycle", "lane_ops_per_cycle", "result"]
     buffer = io.StringIO()
     writer = csv.DictWriter(buffer, columns, lineterminator="\n")
     writer.writeheader()
@@ -203,13 +206,15 @@ def write_results(rows, problems, sources, args):
             "".join(f"{v}  {k}\n" for k, v in source_hashes().items()) + "\n")
     text += __doc__.split("\n\n")[3] + "\n\n"
     text += ("Every row is checked three ways: outputs against Python, full final state against the ISA model,\n"
-             "and cycle count against the formula. Speedup = cycles(L=1) / cycles(L); same N, same data.\n\n")
+             "and cycle count against the formula. Speedup = cycles(L=1) / cycles(L); same N, same data.\n"
+             "'est. +sum' (W2 only) is an estimate: it adds L-1 assumed cycles for summing the per-lane\n"
+             "partial counts, which this ISA cannot do; those cycles are not executed or measured.\n\n")
     text += (f"{'wl':<3} {'N':>3} {'L':>2} {'instr':>5} {'cycles':>6} {'pred':>5} {'lane_ops':>8} "
-             f"{'speedup':>7} {'w/ reduce':>9} {'elem/cyc':>8} {'ops/cyc':>7}  result\n")
+             f"{'speedup':>7} {'est. +sum':>9} {'elem/cyc':>8} {'ops/cyc':>7}  result\n")
     for r in rows:
         text += (f"{r['workload']:<3} {r['n']:>3} {r['lanes']:>2} {r['instructions']:>5} {r['cycles']:>6} "
                  f"{r['predicted_cycles']:>5} {r['lane_ops']:>8} {r['speedup']:>7.2f} "
-                 f"{r['speedup_with_reduction']:>9.2f} {r['elements_per_cycle']:>8.3f} "
+                 f"{r['speedup_est_with_lane_sum']:>9.2f} {r['elements_per_cycle']:>8.3f} "
                  f"{r['lane_ops_per_cycle']:>7.3f}  {r['result']}\n")
     passed = not problems and all(r["result"] == "PASS" for r in rows)
     text += "\n" + ("ALL PASS\n" if passed else "FAILED\n" + "".join(f"  {p}\n" for p in problems))

@@ -21,6 +21,8 @@
 \newcommand{\PathOne}{15.7}
 \newcommand{\RandBuilds}{12}
 \newcommand{\RandGoals}{57}
+\newcommand{\RandGoalsMax}{57}
+\newcommand{\RandGoalsMin}{42}
 \newcommand{\RandInstr}{618{,}121}
 \newcommand{\RandMutDetected}{19}
 \newcommand{\RandMutHang}{1}
@@ -41,7 +43,7 @@
 \newcommand{\UnitMutDetected}{23}
 \newcommand{\BenchRows}{%
 W1 $C=A+B$ & 129 & 33 & 17 & 3.91 & 7.59 & 0.25\,$\to$\,1.88 \\
-W2 count$(A<T)$ & 99 & 27 & 15 & 3.67 & 6.60 & 0.32\,$\to$\,2.13 \\ \quad with lane sum & & & & (3.30) & (4.50) &  \\
+W2 count$(A<T)$ & 99 & 27 & 15 & 3.67 & 6.60 & 0.32\,$\to$\,2.13 \\ \quad est.\ with lane sum$^\ddagger$ & & & & (3.30) & (4.50) &  \\
 W3 $(A\wedge M)\vee B$ & 193 & 49 & 25 & 3.94 & 7.72 & 0.17\,$\to$\,1.28 \\
 W4 $aX+b$ & 132 & 36 & 20 & 3.67 & 6.60 & 0.24\,$\to$\,1.60 \\}
 \newcommand{\SpeedupFourCoords}{(W1,3.91) (W2,3.67) (W3,3.94) (W4,3.67)}

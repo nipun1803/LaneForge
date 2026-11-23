@@ -99,7 +99,7 @@ Example 1 written for the assembler ([`programs/add.s`](../programs/add.s)):
 
 Expressions may use decimal, `0x` hex and `0b` binary numbers, `.equ` names, `+ - *` and brackets, e.g. `VLD v1, [BASE + 3]`. Mnemonics are not case-sensitive. Errors name the file and line (`prog.s:7: error: …`), and nothing is written when there is an error. The assembler warns about a program with no `HALT` and about `SLI` values that a narrow `WIDTH` would truncate.
 
-The data words are packed for the `LANES` and `WIDTH` given on the command line (default 4 × 8), so build the processor with the same values.
+The data words are packed for the `LANES` and `WIDTH` given on the command line (default 4 × 8), so build the processor with the same values. The data file is always written, and is empty when the source has no data, so an old data image can never be loaded by mistake. Numbers without a `0x` or `0b` prefix are decimal, so `08` means 8.
 
 ## Loading a program
 
