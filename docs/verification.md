@@ -127,6 +127,35 @@ The smoke, ISA-definition and integration benches use fixed checks and program s
 
 [Coverage evidence](../results/coverage_guards.txt) records six negative probes on healthy RTL: omit HALT stimulus from the lane ALU, omit VMUL stimulus from the vector ALU, omit one decoder instruction word, and empty the random/toggling/selection section of the register-file, lane-MUX and result-combiner benches. All six are rejected with a coverage-hole diagnostic. These probes are separate from the 23 RTL mutations and are reproduced by `make mutation_tests`.
 
+## Random-program verification (Phase II)
+
+The module testbenches check each block against a reference. Random programs check the processor as a whole against a second, independent model.
+
+```bash
+make random_tests             # 1,000 random programs on each of the 12 builds (seed 1)
+make random_tests N=5000 SEED=7
+make random_mutations         # run the random programs against the 23 planted bugs
+make model_test               # ISA model tests + directed RTL-vs-model programs on all 12 builds
+make run_prog PROG=prog.s     # run one program on the RTL and the model, compare
+```
+
+```mermaid
+flowchart LR
+    G["Random program<br/>generator (seeded)"] --> R["RTL<br/>tb/prog_runner.v"]
+    G --> M["ISA model<br/>scripts/lfmodel.py"]
+    R --> C{"Compare 528 values:<br/>counters, mask, scalar, PC,<br/>HALT, v0-v7, all 512 memory words"}
+    M --> C
+    M --> V["Functional coverage<br/>every goal must be hit"]
+```
+
+* **Independent model.** [`scripts/lfmodel.py`](../scripts/lfmodel.py) is written from the ISA document, not from the RTL or the Verilog model inside `tb_simd_top`. Its field positions are hard-coded rather than read from `simd_defs.vh`, so a mistake in the header would show up as a mismatch instead of being copied.
+* **Runner.** [`tb/prog_runner.v`](../tb/prog_runner.v) runs any number of programs on one compiled build: reset, reload both memories, run to `HALT` or 300 cycles, dump the final state. [`scripts/lfrun.py`](../scripts/lfrun.py) writes the programs, runs both sides and lists every difference. Unknown (`X`) values in the RTL count as mismatches.
+* **Generator.** [`scripts/random_verify.py`](../scripts/random_verify.py) mixes all 16 opcodes, the scalar operand, edge values (0, 1, all-ones, the sign bit), random reserved bits, a small pool of addresses so stores are often re-read or overwritten, mid-program `HALT`s, and lengths up to 255. Every 40th program is a full 256-word image with no `HALT`, which wraps the PC and runs into the cycle limit.
+
+**Results** ([evidence](../results/random_verification.txt)): 12,000 programs (1,000 per build), 618,121 instructions executed, 6,336,000 state values compared, **0 mismatches**. Every coverage goal is hit on every build: each opcode, each ALU opcode with the scalar operand, each lane's compare both true and false, carries, borrows, multiply overflow, shift amounts ≥ `WIDTH`, signed compares across the sign boundary, store-then-load hazards, back-to-back register dependencies, ignored bits, `HALT` with code after it, and PC wrap-around.
+
+**Against the planted bugs** ([evidence](../results/random_mutations.txt)): random programs alone, with no module testbench, expose 19 of the 23 bugs by a state mismatch. M03 (read port forwards a pending write) creates a combinational loop, so the simulation never finishes. The other three (M11 `any_true`, M12 population count, M13 reserved write-back select) change only signals that never reach the processor's architectural state, so no program can expose them. Only the module testbenches catch those three. The two methods complement each other.
+
 ## Reading test output
 
 A passing run:
