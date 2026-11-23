@@ -1,0 +1,4 @@
+lanes,width,lane_alu_each,lane_alu_instances,lane_alus_total,vector_regfile,result_combiner,lane_mux,vector_control,simd_core,top_level_logic,total_cells,total_flipflops
+1,8,436,1,436,276,43,8,25,788,18429,19217,4274
+4,8,436,4,1744,996,175,32,25,2972,70990,73962,16755
+8,8,436,8,3488,1956,357,64,25,5890,141339,147229,33398
