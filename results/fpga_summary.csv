@@ -1,0 +1,4 @@
+lanes,width,comb_cells,flipflops,ram_slices,dsp_mult18,bram_dp16kd,lut4,dpr16x4,core_lut4,core_ff,fmax_best_mhz,fmax_median_mhz,fmax_worst_mhz,seeds,critical_path_ns
+1,8,2200,212,128,1,0,1286,128,394,72,61.54,60.07,59.83,3,15.72
+4,8,7606,405,512,4,0,4312,512,1475,264,55.6,55.5,55.43,3,17.46
+8,8,13261,664,1024,8,0,6791,1024,2936,520,52.86,52.12,51.68,3,18.39

@@ -1,0 +1,62 @@
+# LaneForge FPGA implementation evidence (Lattice ECP5, open-source flow)
+# Generated (UTC): 2026-11-23T12:45:03+00:00
+# Tools: Yosys 0.71+77 (git sha1 11d972c20, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8); "nextpnr-ecp5" -- Next Generation Place and Route (Version nextpnr-0.11.1-121-g15b77f5f)
+# Device: LFE5U-85KF, package CABGA381, speed grade 6
+# Design: synthesis/fpga_top.v, LANES=4, WIDTH=8, instruction ROM excluded
+# Reproduce: make fpga FPGA_LANES=4
+# Yosys (flat, used for place and route): <oss-cad-suite>/bin/yosys -q -p 'read_verilog -Irtl rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v synthesis/fpga_top.v; chparam -set LANES 4 -set WIDTH 8 fpga_top; synth_ecp5 -top fpga_top -json <work>/netlist.json; tee -o <work>/flat.stat stat'
+# Yosys (hierarchical, per-block counts): <oss-cad-suite>/bin/yosys -q -p 'read_verilog -Irtl rtl/lane_alu.v rtl/lane_mux.v rtl/result_combiner.v rtl/simd_top.v rtl/vector_alu.v rtl/vector_control.v rtl/vector_regfile.v synthesis/fpga_top.v; chparam -set LANES 4 -set WIDTH 8 fpga_top; synth_ecp5 -top fpga_top -noflatten; tee -o <work>/hier.stat stat'
+# Source SHA-256 hashes:
+472b91085ba98ad1533b76dad0b92e34808cb4747132010b0a30efc508e423ea  rtl/lane_alu.v
+fedc2643cce4b6933adb4a87787c280a597445aae0183274ef4cf5cf16d3a1eb  rtl/lane_mux.v
+854c5257c507a4b3279228d43e570046cb5dc38375c8c5a4fc1faea29434eba2  rtl/result_combiner.v
+80ca5a7ddb39ba6967a55fdce00f02e0e31723dce4e70a67ac44c8baef6b8289  rtl/simd_top.v
+c688810640b961c2588f2a65a0dd5e7ad9f1e75e40379ba5e072a4b753662e61  rtl/vector_alu.v
+bf045091f6a086e629074bf7e0482916b7496369f539760cf700d74849460f04  rtl/vector_control.v
+1ed302435f3c1487e5f0ee5cc5ab29fb739a66d7a429dd8b6c5f70ce0a616555  rtl/vector_regfile.v
+8144a0db539776884844ab290bf87e5a8806bb3661f079f4ae0b8f95e22eec25  rtl/simd_defs.vh
+4e0ab41ef9a5e163ccd9654f178faff0b3c619e77719f3bce2eacc8461367fbd  synthesis/fpga_top.v
+146ca9a637ce23173aef78985fb168f3d379f93b22a2f0a665e05be9b78ec59f  scripts/fpga_flow.py
+
+## Mapped primitives (flat netlist)
+    4312  LUT4
+      83  CCU2C
+    1203  PFUMX
+     632  L6MUX21
+     405  TRELLIS_FF
+     512  TRELLIS_DPR16X4
+       4  MULT18X18D
+       0  DP16KD
+
+## Per-block primitives (hierarchical synthesis; lane ALUs multiplied by instance count)
+block                                               LUT4  CCU2C  PFUMX  L6MUX     FF  DPR16X4  MULT
+lane ALUs (x4)                                       956     32    356    188      0        0     4
+vector register file                                 394      0     64      0    264        0     0
+result combiner                                       68      0     32      0      0        0     0
+lane MUX                                              32      0      0      0      0        0     0
+control unit                                          25      0      7      3      0        0     0
+simd_top own logic (data memory, PC, counters)      2680     51    808    468    107      512     0
+measurement wrapper (LFSR, XOR fold)                  62      0     12      3     34        0     0
+
+## Device utilisation after place and route (seed 2)
+TRELLIS_COMB      7606 / 83640     9.09%
+TRELLIS_FF         405 / 83640     0.48%
+TRELLIS_RAMW       512 / 10455     4.90%
+MULT18X18D           4 / 156       2.56%
+DP16KD               0 / 208       0.00%
+TRELLIS_IO           3 / 205       1.46%
+
+## Maximum frequency of clk by placement seed (target 50 MHz)
+seed 1: 55.43 MHz
+seed 2: 55.60 MHz
+seed 3: 55.50 MHz
+best 55.60 MHz, median 55.50 MHz, worst 55.43 MHz
+
+## Critical path (seed 2)
+17.46 ns = 6.86 ns logic (13 logic stages) + 10.60 ns routing
+from lfsr_TRELLIS_FF_Q_15
+to   u_cpu.u_rf.vregs[6]_TRELLIS_FF_Q_2
+through: lfsr -> u_cpu.dmem -> u_cpu.u_rf
+
+## nextpnr command (best seed; <work> is a temporary directory)
+<oss-cad-suite>/bin/nextpnr-ecp5 --85k --package CABGA381 --speed 6 --json <work>/netlist.json --freq 50 --seed 2 --timing-allow-fail --report <work>/report_seed2.json -l <work>/pnr_seed2.log -q

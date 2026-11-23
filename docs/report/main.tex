@@ -1,7 +1,9 @@
 % =============================================================================
-%  SIMD Vector Processing Unit - IEEE-format project report (Phase I)
-%  Build: tectonic main.tex (Overleaf: upload main.tex, references.bib and
-%  fig_waveform.tex; set main.tex as the main document)
+%  SIMD Vector Processing Unit - IEEE-format project report (final, Phase II)
+%  Build: make report  (runs scripts/report_tables.py, then tectonic main.tex)
+%  Overleaf: upload main.tex, references.bib, fig_waveform.tex and
+%  gen_results.tex; set main.tex as the main document.
+%  The Phase I submission is frozen in phase1/main.pdf.
 \documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
 \setcounter{dbltopnumber}{2}   % allow two full-width figures at the top of a page
@@ -28,6 +30,11 @@
 \usepackage{microtype}   % margin kerning: fewer loose or badly broken lines
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,fit,calc,backgrounds}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% Every number in the Results section comes from results/ via scripts/report_tables.py
+\input{gen_results.tex}
 
 % ---- figure palette (shared by all diagrams) ----
 \definecolor{cFetch}{HTML}{2E6FD8}   % fetch / control  - blue
@@ -78,8 +85,14 @@ verified exhaustively, and the integrated unit is checked against an
 instruction-set reference model. The default $L=4$, $W=8$ suite comprises
 826{,}122 automated checks with no failures. All twelve combinations of
 $L=1,4,8$ and $W=2,4,8,16$ pass, and mutation testing detects all 23 seeded faults.
-Cycle-count speedup and FPGA resource and frequency measurements are the next
-stage of the work.
+An assembler, an independent Python instruction-set model and random-program
+testing (\RandPrograms{} programs over all twelve configurations) add a second
+line of verification with no mismatches. On four benchmark kernels with 32
+elements, the 4- and 8-lane builds need \SpeedupFourFour--\SpeedupThreeFour$\times$
+and \SpeedupTwoEight--\SpeedupThreeEight$\times$ fewer cycles than the scalar build.
+On a Lattice ECP5 FPGA, logic grows from \CombOne{} to \CombEight{} cells and
+the clock falls from \FmaxOne{} to \FmaxEight{}~MHz, so the 8-lane build still
+adds two arrays \EffOneEight$\times$ faster in time.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -154,11 +167,16 @@ hardware. The goals are to
 count and throughput, and
 (iv) measure the FPGA resource cost and maximum frequency of increasing the
 number of lanes.
-This Phase~I report covers the architecture, the instruction set, module-level
-verification and the integrated, verified top level. Goals (iii) and (iv) are
-completed in Phase~II.
+This report covers all four goals. Section~\ref{sec:lit} reviews related
+work. Section~\ref{sec:solution} presents the architecture, the instruction set,
+the verification methodology, the software tools and the measurement setup.
+Section~\ref{sec:results} reports verification results, scalar-versus-SIMD
+performance, hardware cost on an FPGA and the resulting time speedup.
+Section~\ref{sec:contrib} lists individual contributions and
+Section~\ref{sec:conclusion} concludes.
 % -----------------------------------------------------------------------------
 \section{Literature Review}
+\label{sec:lit}
 
 \subsection{Vector and SIMD architectures}
 Flynn~\cite{flynn1972} classified computer organisations by their instruction
@@ -203,19 +221,32 @@ VESPA~\cite{yiannacouras2008} showed that the number of lanes, the vector length
 and the memory interface can be tuned to trade FPGA area for performance. Both
 note that speedup falls short of the lane count when scalar code, memory
 accesses or control overhead dominate, as Amdahl's law~\cite{amdahl1967}
-predicts. We will measure this effect with scalar-versus-SIMD workloads on the
+predicts. We measure this effect with scalar-versus-SIMD workloads on the
 same RTL.
+
+\subsection{Processor verification}
+Directed tests cannot enumerate every instruction sequence of a processor.
+Aharon~\emph{et al.}~\cite{aharon1995} generated random test programs and
+compared the design against an architectural reference model, an approach
+that found many bugs in industrial PowerPC processors. Mutation analysis,
+introduced by DeMillo~\emph{et al.}~\cite{demillo1978}, measures a test
+suite by planting small faults and counting how many it detects. We use both:
+random programs against an independent instruction-set model, and planted RTL
+faults to compare that method with the module testbenches.
 
 \subsection{Positioning of this work}
 Unlike the FPGA processors above, this project aims to be \emph{clear} rather
 than as fast as possible. It uses a single-cycle datapath (CPI~$=1$), so cycle
 counts can be checked by hand, and builds the scalar baseline from the same RTL,
 so the only variable in the comparison is datapath width. Verification is treated
-as a first-class result, using exhaustive, reference-model and mutation testing.
+as a first-class result, using exhaustive, reference-model, random-program
+and mutation testing, and all measurements use open-source
+tools~\cite{shah2019} so that every number can be reproduced.
 The design is written in Verilog~\cite{ieee1364} with SystemVerilog~\cite{ieee1800}
 features used only in the testbenches.
 
 \section{Proposed Solution}
+\label{sec:solution}
 % -----------------------------------------------------------------------------
 \subsection{Architecture overview}
 Fig.~\ref{fig:block} shows the complete unit. In each clock cycle the
@@ -579,155 +610,367 @@ vector at the next rising edge. The program halts after exactly five cycles.}
 \begin{figure*}[t]
 \centering
 \begin{tikzpicture}[
-    font=\tiny,
-    chip/.style={draw=#1!80!black, fill=#1!20, thick, rounded corners=1.5pt,
-                 minimum height=6mm, align=center, inner sep=1pt},
-    code/.style={chip=#1, font=\tiny\ttfamily, minimum width=17mm},
+    font=\scriptsize,
+    role/.style={draw=#1!80!black, fill=#1!18, thick, rounded corners=2pt,
+                 minimum width=31mm, text width=29mm, minimum height=13mm, align=center, inner sep=2pt},
+    head/.style={font=\scriptsize\bfseries, text=#1!75!black, align=center},
     row/.style={font=\scriptsize\bfseries, anchor=east, align=right}
 ]
-% ---- RTL ----
-\node[row] at (-0.15,0) {RTL};
-\node[code=cNip] (r0) at (0.850,0) {simd\_defs.vh};
-\node[code=cNip] (r1) at (2.650,0) {lane\_alu.v};
-\node[code=cNip] (r2) at (4.450,0) {lane\_mux.v};
-\node[code=cNip] (r3) at (6.250,0) {vector\_alu.v};
-\node[code=cNip] (r4) at (8.050,0) {result\_\\combiner.v};
-\node[code=cMoh] (r5) at (9.850,0) {vector\_\\regfile.v};
-\node[code=cMoh] (r6) at (11.650,0) {vector\_\\control.v};
-\node[code=cMoh] (r7) at (13.450,0) {simd\_top.v};
-% ---- Verification ----
-\node[row] at (-0.15,-0.8) {Verification};
-\node[code=cAnu] (t0) at (0.850,-0.8) {tb\_defs.v\\ref\_alu.vh};
-\node[code=cAnu] (t1) at (2.650,-0.8) {tb\_lane\_\\alu.v};
-\node[code=cAnu] (t2) at (4.450,-0.8) {tb\_lane\_\\mux.v};
-\node[code=cAnu] (t3) at (6.250,-0.8) {tb\_vector\_\\alu.v};
-\node[code=cAnu] (t4) at (8.050,-0.8) {tb\_result\_\\combiner.v};
-\node[code=cAnu] (t5) at (9.850,-0.8) {tb\_vector\_\\regfile.v};
-\node[code=cAnu] (t6) at (11.650,-0.8) {tb\_vector\_\\control.v};
-\node[code=cAnu] (t7) at (13.450,-0.8) {tb\_simd\_top.v\\tb\_smoke.v};
-\foreach \i in {0,...,7} \draw[gray!55, densely dotted] (r\i.south) -- (t\i.north);
-% ---- Build & docs ----
-\node[row] at (-0.15,-1.6) {Build \& docs};
-\node[chip=cOmk, minimum width=3.50cm] at (1.750,-1.6) {\texttt{Makefile}, scaffolding,\\Yosys synthesis report};
-\node[chip=cOmk, minimum width=3.50cm] at (5.350,-1.6) {architecture, ISA,\\SIMD concept docs};
-\node[chip=cOmk, minimum width=3.50cm] at (8.950,-1.6) {module, control, top-level,\\verification docs};
-\node[chip=cOmk, minimum width=3.50cm] at (12.550,-1.6) {\texttt{README.md}, programming\\guide, getting started};
-% ---- Report ----
-\node[row] at (-0.15,-2.4) {Report \& demo};
-\node[chip=cOmk, minimum width=3.50cm] at (1.750,-2.4) {report text and references\\\texttt{main.tex}, \texttt{references.bib}};
-\node[chip=cNip, minimum width=3.50cm] at (5.350,-2.4) {waveform (Fig.~5), conclusion,\\test-evidence log};
-\node[chip=cSak, minimum width=3.50cm] at (8.950,-2.4) {colour figures 1--4, 6,\\README / report / Git review};
-\node[chip=cSak, minimum width=3.50cm] at (12.550,-2.4) {example programs\\\texttt{programs/}, \texttt{make demo}};
-% ---- legend ----
-\draw[cNip!80!black, thick, fill=cNip!20] (0.30,-3.25) rectangle ++(0.25,0.2);
-\node[anchor=west, font=\scriptsize] at (0.60,-3.15) {Nipun Patlori (nipun1803)};
-\draw[cMoh!80!black, thick, fill=cMoh!20] (4.90,-3.25) rectangle ++(0.25,0.2);
-\node[anchor=west, font=\scriptsize] at (5.20,-3.15) {Mohan Kumar C R (mohan101mk)};
-\draw[cAnu!80!black, thick, fill=cAnu!20] (10.20,-3.25) rectangle ++(0.25,0.2);
-\node[anchor=west, font=\scriptsize] at (10.50,-3.15) {Anushka Tyagi (anu-ushka)};
-\draw[cOmk!80!black, thick, fill=cOmk!20] (2.60,-3.65) rectangle ++(0.25,0.2);
-\node[anchor=west, font=\scriptsize] at (2.90,-3.55) {Omkar Hadole (omkar-hadole)};
-\draw[cSak!80!black, thick, fill=cSak!20] (7.60,-3.65) rectangle ++(0.25,0.2);
-\node[anchor=west, font=\scriptsize] at (7.90,-3.55) {Saksham Sharma (Saksham-9898)};
+\foreach \x/\c/\n/\u in {0/cNip/Nipun Patlori/nipun1803, 1/cMoh/Mohan Kumar C R/mohan101mk,
+                         2/cAnu/Anushka Tyagi/anu-ushka, 3/cOmk/Omkar Hadole/omkar-hadole,
+                         4/cSak/Saksham Sharma/Saksham-9898}
+  \node[head=\c] at (\x*3.4, 0.95) {\n\\[-1pt]{\normalfont\ttfamily\tiny \u}};
+\node[row] at (-1.75, 0) {Phase I};
+\node[role=cNip] at (0.0, 0) {Datapath design: ISA, lane and vector ALU, lane MUX, result combiner};
+\node[role=cMoh] at (3.4, 0) {Storage, control and integration: register file, decoder, processor top level; video};
+\node[role=cAnu] at (6.8, 0) {Verification: reference model, nine self-checking testbenches};
+\node[role=cOmk] at (10.2, 0) {Build flow, synthesis report, documentation, report text};
+\node[role=cSak] at (13.6, 0) {Report figures, consistency review, example programs};
+\node[row] at (-1.75, -1.55) {Phase II};
+\node[role=cNip] at (0.0, -1.55) {ISA reference model and random-program verification};
+\node[role=cMoh] at (3.4, -1.55) {FPGA implementation, $F_{\max}$, time speedup; report integration};
+\node[role=cAnu] at (6.8, -1.55) {1/4/8-lane scaling study; final verification runs};
+\node[role=cOmk] at (10.2, -1.55) {Assembler, assembly example programs, user documentation};
+\node[role=cSak] at (13.6, -1.55) {Scalar-versus-SIMD benchmarks and speedup analysis};
 \end{tikzpicture}
-\caption{Project map coloured by author, taken from the Git history. Each
-testbench sits directly below the RTL module it verifies.}
+\caption{Role of each team member in Phase~I and Phase~II.}
 \label{fig:team}
 \end{figure*}
 
-\subsection{Implementation status and planned evaluation}
-The \texttt{simd\_synth\_top} wrapper uses Yosys~0.70+post to synthesise the
-processor with variable instruction inputs and observable status and data-memory
-outputs. This configuration includes the datapath, the
-512-word data memory, PC and counters, and excludes instruction ROM. The command
-\texttt{make synth LANES=4 WIDTH=8} reproduces the measurement; the saved report
-records the tool version, parameters, exact command and source SHA-256 hashes.
-At $L=4$, $W=8$, each lane ALU costs 436 generic cells, the register file 996,
-the result combiner 175, the lane multiplexer 32 and the decoder 25. The SIMD
-core therefore costs 2{,}972 cells and the whole configuration 73{,}962 cells.
-Data memory dominates the total with 16{,}384 flip-flops and read multiplexers.
-Its two asynchronous read ports prevent a guaranteed synchronous block-RAM
-mapping. FPGA tools may use distributed RAM, replicated memory or registers;
-actual memory and core resources will be measured separately. Block-RAM
-targeting may require clocked reads and changes to instruction timing.
+\subsection{Software tools}
+\textbf{Assembler.} \path{scripts/lfasm.py} translates assembly into the
+hex files loaded by the instruction and data memories. It reads opcodes and
+field positions from \texttt{simd\_defs.vh}, the header the RTL includes, so
+the two cannot diverge. Directives place data words lane by lane
+(\texttt{.vec}), and errors are reported with file and line. Its tests check
+the encoding table of the instruction-set document and all $2^{16}$
+instruction words through disassembly and reassembly.
 
-Phase~II runs three workloads on $L=1,4,8$: array addition, threshold counting
-with scalar broadcast, and bitwise masking. With CPI~$=1$, the speedup is
+\textbf{Independent ISA model.} \path{scripts/lfmodel.py} is a Python model
+written from the instruction-set document, not from the RTL or the Verilog
+model in \texttt{tb\_simd\_top}. Its field positions are hard-coded rather
+than read from the shared header, so an error in the header appears as a
+mismatch instead of being copied.
+
+\textbf{Program runner.} \path{tb/prog_runner.v} runs any number of programs
+on one compiled build: it resets, reloads both memories, runs to \texttt{HALT}
+or a cycle limit and dumps the final state. A comparison covers
+eight status values (cycles, instructions, lane operations, mask, scalar, PC,
+\texttt{HALT} and steps), the eight vector registers and all 512 data words;
+unknown (\texttt{X}) bits count as mismatches.
+
+\subsection{Random-program verification}
+For each of the twelve builds, a seeded generator produces programs of up to
+255 instructions over all sixteen opcodes. It biases operands towards edge values
+(0, 1, all ones, the sign bit), sets reserved bits at random, draws addresses
+from a small pool so that stores are re-read and overwritten, and inserts
+occasional mid-program \texttt{HALT}s; every 40th program is a full 256-word
+image without \texttt{HALT}, which wraps the program counter. The model
+records \RandGoals{} functional-coverage goals (each opcode, each ALU opcode with the
+scalar operand, each lane's compare true and false, carries, borrows,
+multiply overflow, shift amounts $\ge W$, signed compares across zero,
+store-to-load hazards, back-to-back dependencies, ignored bits and PC
+wrap-around), and a build fails if any goal is missed.
+
+\subsection{Benchmark workloads}
+Table~\ref{tab:work} lists the four kernels. A generator writes each kernel in
+assembly for a lane count $L$ and $N$ elements; the same data is used for every
+$L$. Because the instruction set has no branches, every loop is unrolled, and
+with CPI~$=1$ the cycle count follows directly from the program length. Each
+run is checked three ways: the output arrays against plain Python, the full
+final state against the ISA model, and the cycle count against the formula.
+W2 uses the fact that a true compare writes $-1$ to its lane: subtracting the
+compare result adds one to that lane's count, giving three instructions per
+vector. It leaves one partial count per lane, because the ISA has no
+cross-lane (horizontal) add. We therefore also report W2 with $L-1$ extra
+cycles for summing the lanes. Speedup and time speedup are
 \begin{equation}
-S(L) = \frac{\text{cycles}(L=1)}{\text{cycles}(L)} \le L ,
+S(L) = \frac{\text{cycles}(1)}{\text{cycles}(L)},\qquad
+S_t(L) = S(L)\,\frac{F_{\max}(L)}{F_{\max}(1)} .
 \end{equation}
-and throughput is reported in element operations per cycle. FPGA resource use
-(LUTs, FFs, DSPs) and maximum frequency will be measured for each lane count to
-quantify the area cost of parallelism.
+
+\begin{table}[t]
+\centering
+\caption{Benchmark kernels ($N$ elements, $L$ lanes)}
+\label{tab:work}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Kernel & Instructions per vector & Cycles \\
+\midrule
+W1 $C=A+B$ & \texttt{VLD, VLD, VADD, VST} & $4N/L+1$ \\
+W2 count$(A<T)$ & \texttt{VLD, VCMPLT s, VSUB} & $3N/L+3$ \\
+W3 $(A\wedge M)\vee B$ & \texttt{VLD}$\times$3\texttt{, VAND, VOR, VST} & $6N/L+1$ \\
+W4 $aX+b$ & \texttt{VLD, VMUL s, VADD, VST} & $4N/L+4$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Synthesis and FPGA flow}
+Generic synthesis uses the \texttt{simd\_synth\_top} wrapper and
+Yosys~\cite{yosys} with variable instruction inputs; it includes the datapath,
+the 512-word data memory, PC and counters, and excludes instruction ROM.
+For the FPGA, Yosys \texttt{synth\_ecp5} and nextpnr-ecp5~\cite{shah2019}
+implement the design on a Lattice LFE5U-85F~\cite{ecp5ds} (CABGA381, speed
+grade~6). The wrapper \texttt{fpga\_top} feeds the instruction and debug
+address from a free-running 32-bit LFSR and XOR-folds every output into one
+registered pin. Nothing can be optimised away, only three pins are needed, and
+because inputs and output are registered, $F_{\max}$ is set by the processor's
+own register-to-register paths. Each build is placed and routed with three
+seeds; we report the median $F_{\max}$.
 
 % -----------------------------------------------------------------------------
-\section{Conclusion}
-This Phase~I work delivers a complete, parameterised SIMD vector processing unit
-in synthesisable Verilog: seven processor RTL modules plus a shared ISA header,
-integrated into a single-cycle
-processor with a sixteen-instruction ISA, scalar broadcast, compare masks and
-performance counters. The design is verified by a self-checking suite of
-826{,}122 checks at $L=4$, $W=8$ with no failures, including exhaustive testing of the lane ALU
-and the instruction decoder and whole-state comparison of the integrated unit
-against an instruction-set reference model; all 23 injected faults are
-detected, and all twelve supported configurations pass. Example programs loaded
-from hex files execute at exactly one cycle per instruction, and the simulated
-waveform (Fig.~\ref{fig:wave}) confirms that all lanes compute in the same
-cycle with no interaction between them.
+\section{Results and Discussion}
+\label{sec:results}
 
-The current design has deliberate limitations: it is single-cycle, so the
-critical path runs through the ALU and memory in one clock period; programs are
-still hand-encoded; and the generic synthesis maps the data memory to flip-flops.
-Phase~II addresses these by adding an assembler, measuring scalar-versus-SIMD
-speedup on the benchmark workloads, scaling to eight lanes, and reporting FPGA
-resource use and maximum frequency. Memory mapping will be measured on the
-target FPGA; adapting the asynchronous read ports for block RAM is future work.
+\subsection{Functional verification}
+The module testbenches pass in all \MatrixConfigs{} configurations of
+$L=1,4,8$ and $W=2,4,8,16$, with \ModuleChecks{} checks at $L=4$, $W=8$
+(Table~\ref{tab:ver}), and detect all \UnitMutDetected{} planted RTL faults.
+Random-program verification ran \RandPerBuild{} programs on each of the
+\RandBuilds{} builds: \RandPrograms{} programs, \RandInstr{} executed
+instructions and \RandValues{} compared state values, with no mismatch. All
+\RandGoals{} coverage goals were hit on every build.
+
+Running only the random programs against the same \MutTotal{} faults shows how
+the two methods differ. \RandMutDetected{} faults change the final state and
+are detected. One (a register-file read port that forwards a pending write)
+forms a combinational loop through the ALU, and the simulation never finishes.
+The remaining \RandMutMissed{} alter only internal signals that never reach
+architectural state: the \emph{any}-lane flag, the mask population count, and
+the reserved write-back select, which the decoder never produces. No program
+can expose them, but the module testbenches do. Each method catches faults
+the other cannot reach, so both are needed.
+
+\subsection{Scalar versus SIMD performance}
+Table~\ref{tab:bench} and Fig.~\ref{fig:speedup} give the measured cycle counts
+for $N=32$; every run matches its predicted cycle count exactly and passes all
+three checks. W3 comes closest to the ideal speedup: it does the most work per vector
+and has only one fixed instruction (\texttt{HALT}), reaching
+\SpeedupThreeEight$\times$ at $L=8$. W2 and W4 carry three or four
+setup and final instructions that do not shrink with $L$, so their speedup
+saturates sooner (\SpeedupFourEight$\times$ at $L=8$), as Amdahl's
+law~\cite{amdahl1967} predicts. The effect grows for short arrays: at $N=8$
+the 8-lane W2 reaches only \SpeedupTwoEightSmall$\times$. Counting the
+cross-lane sum lowers W2 at $L=8$ from \SpeedupTwoEight$\times$ to
+\SpeedupTwoEightRed$\times$, which shows why commercial SIMD instruction sets
+include horizontal-add or reduction instructions.
+
+\begin{table}[t]
+\centering
+\caption{Cycles and speedup, $N=32$, $W=8$}
+\label{tab:bench}
+\footnotesize
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}lrrrrrl@{}}
+\toprule
+ & \multicolumn{3}{c}{Cycles} & \multicolumn{2}{c}{Speedup} & Elements \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-6}
+Kernel & $L{=}1$ & $L{=}4$ & $L{=}8$ & $L{=}4$ & $L{=}8$ & per cycle \\
+\midrule
+\BenchRows
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar, bar width=8pt, width=\columnwidth, height=4.8cm,
+    symbolic x coords={W1,W2,W3,W4}, xtick=data,
+    ymin=0, ymax=9.4, ytick={0,2,4,6,8}, ylabel={Speedup over $L=1$},
+    ylabel style={font=\footnotesize}, tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, at={(0.5,-0.2)}, anchor=north, legend columns=2, draw=none},
+    nodes near coords, nodes near coords style={font=\tiny, /pgf/number format/.cd, fixed, precision=2, fixed zerofill},
+    enlarge x limits=0.18, ymajorgrids, grid style={gray!25}]
+\addplot[fill=cComp!55, draw=cComp!80!black] coordinates {\SpeedupFourCoords};
+\addplot[fill=cFetch!55, draw=cFetch!80!black] coordinates {\SpeedupEightCoords};
+\legend{$L=4$, $L=8$}
+\draw[cFail, dashed, thick] (rel axis cs:0,4/9.4) -- (rel axis cs:1,4/9.4);
+\draw[cFail, dashed, thick] (rel axis cs:0,8/9.4) -- (rel axis cs:1,8/9.4);
+\end{axis}
+\end{tikzpicture}
+\caption{Measured cycle speedup of the 4- and 8-lane builds over the scalar
+build for $N=32$. Dashed lines mark the ideal speedup $S=L$.}
+\label{fig:speedup}
+\end{figure}
+
+\subsection{Hardware cost}
+Table~\ref{tab:synth} gives generic cell counts. The SIMD core grows
+\CoreGrowthFour$\times$ from one to four lanes and \CoreGrowthEight$\times$
+to eight, almost exactly in proportion to $L$, while the decoder stays at 25
+cells. The data memory dominates the total because generic synthesis builds
+it from flip-flops (\GenericFlopsFour{} at $L=4$).
+
+On the ECP5 (Table~\ref{tab:fpga}) the picture changes. Yosys maps the data
+memory to distributed LUT RAM, with one copy per read port, so only
+\FlopsFour{} flip-flops remain at $L=4$. Each lane uses one DSP multiplier
+for \texttt{VMUL}, block RAM is not used because the memory has asynchronous
+reads, and the 8-lane build occupies 16\% of the device's logic cells. Core LUTs
+grow in proportion to $L$; the data memory, PC and counters remain the
+largest single block.
+
+\begin{table}[t]
+\centering
+\caption{Generic synthesis cells (Yosys), $W=8$}
+\label{tab:synth}
+\footnotesize
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Block & $L{=}1$ & $L{=}4$ & $L{=}8$ \\
+\midrule
+\SynthRows
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Lattice ECP5-85F implementation, $W=8$}
+\label{tab:fpga}
+\footnotesize
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+ & $L{=}1$ & $L{=}4$ & $L{=}8$ \\
+\midrule
+\FpgaRows
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Clock frequency and time speedup}
+The median $F_{\max}$ falls from \FmaxOne{} to \FmaxFour{} and \FmaxEight{}~MHz.
+In every build the critical path is the load: it starts at the instruction's
+address bits, passes through the 512-entry data-memory read multiplexer and
+ends at a vector-register flip-flop. Logic delay stays near 7--7.5~ns; the
+path grows from \PathOne{} to \PathEight{}~ns mainly through routing, because
+wider vectors spread the memory and register file across more of the chip.
+Table~\ref{tab:eff} combines cycles and clock: the 8-lane build loses
+\ClockLossEight\% of its clock but still adds two arrays
+\EffOneEight$\times$ faster in time, using \CombRatioEight$\times$ the logic
+cells. The cross-lane sum is the weak point: W2 gains only 3.9$\times$ in time.
+
+\begin{table}[t]
+\centering
+\caption{Execution time and time speedup $S_t$, $N=32$}
+\label{tab:eff}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+ & \multicolumn{2}{c}{Time (ns)} & \multicolumn{2}{c}{$S_t$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Kernel & $L{=}1$ & $L{=}8$ & $L{=}4$ & $L{=}8$ \\
+\midrule
+\EffRows
+\bottomrule
+\multicolumn{5}{@{}l}{\scriptsize $^\dagger$ including $L-1$ cycles to add the per-lane partial counts}
+\end{tabular}
+\end{table}
+
+\subsection{Limitations}
+The measurements have known limits. Programs are straight-line because the
+ISA has no branches, and the 256-entry instruction memory caps the scalar
+kernels at 42 (W3) to 63 (W1) elements. The FPGA wrapper drives instructions from an LFSR,
+so it measures resources and timing, not a running program; functional
+behaviour is verified in simulation. Instruction ROM is excluded from all
+resource counts. Timing comes from the open-source nextpnr timing model at
+speed grade~6, not from a vendor tool or hardware. Finally, the single-cycle
+design puts the memory read and the ALU in one clock period, which is the main
+reason for the modest clock frequency.
 
 % -----------------------------------------------------------------------------
 \section{Individual Contributions}
-Work was split by layer: RTL design, verification, build and documentation,
-the report, and video demonstration. A recorded video demonstration is
+\label{sec:contrib}
+In Phase~I the work was divided by layer of the design: datapath, storage and
+control, verification, build and documentation, and figures. In Phase~II it
+was divided by study: software tools, random verification, performance,
+scaling and FPGA implementation. Fig.~\ref{fig:team} summarises each member's
+role in both phases. A recorded video demonstration of the Phase~I prototype is
 available at \url{https://drive.google.com/drive/folders/17inRVThPM6PJx6WKdC6LPiTfmpqH07jN}.
-Every item below can be traced to commits in the project's Git
-repository under the GitHub username shown in brackets, and
-Fig.~\ref{fig:team} maps each file to the member who wrote it.
-
 
 \begin{itemize}
-\item \textbf{Nipun Patlori} (\texttt{nipun1803}) -- datapath RTL: the shared
-      instruction-set definitions header (\texttt{simd\_defs.vh}: opcodes,
-      field positions, encoding macros), the lane ALU, the lane multiplexer,
-      the vector ALU (\texttt{generate} loop of $L$ lanes) and the result
-      combiner with mask reduction. Also the simulation-waveform figure
-      (Fig.~\ref{fig:wave}) and the script that draws it from the VCD, the
-      conclusion of this report, and the committed test-evidence log.
-      \emph{Phase~II:} random-program verification.
-\item \textbf{Mohan Kumar C R} (\texttt{mohan101mk}) -- storage, control and
-      integration RTL: the vector register file and scalar register, the vector
-      control unit (instruction decoder), the top level \texttt{simd\_top}
-      (instruction and data memories, program counter, \texttt{HALT} handling,
-      performance counters, debug read port), and prototype video recording.
-      \emph{Phase~II:} FPGA resource utilisation and maximum frequency.
-\item \textbf{Anushka Tyagi} (\texttt{anu-ushka}) -- the complete verification
-      suite: shared testbench definitions, the independent ALU reference model,
-      and the nine self-checking testbenches, including the exhaustive
-      lane-ALU and decoder tests, the lane-isolation test and the top-level
-      test against an instruction-set reference model.
-      \emph{Phase~II:} 8-lane scaling study.
-\item \textbf{Omkar Hadole} (\texttt{omkar-hadole}) -- project scaffolding,
-      \texttt{Makefile} build and simulation flow, Yosys synthesis report,
-      all documentation in \texttt{docs/} and the README, and the text of
-      this IEEE report (all sections up to the conclusion) and its references.
-      \emph{Phase~II:} assembler.
-\item \textbf{Saksham Sharma} (\texttt{Saksham-9898}) -- report figures
-      (Figs.~\ref{fig:simdscalar}--\ref{fig:verif} and~\ref{fig:team}:
-      scalar-versus-SIMD, colour-coded datapath, instruction formats,
-      verification flow and this project map); the review that brought the README, the report and the
-      Git history into agreement; and the runnable example programs in
-      \texttt{programs/} with the \texttt{make demo} target that checks them
-      against the programming guide.
-      \emph{Phase~II:} scalar-versus-SIMD benchmarks.
+\item \textbf{Nipun Patlori} (\texttt{nipun1803}) -- \emph{Datapath designer
+      and random-verification lead.} Phase~I: defined the instruction
+      set's opcodes and instruction formats and designed the datapath: the
+      lane ALU, the vector ALU that replicates it across all lanes, the lane
+      multiplexer that broadcasts the scalar operand, and the result combiner
+      with its compare-mask summary; also produced the simulation waveform
+      figure and wrote the Phase~I conclusion. Phase~II: built the
+      independent instruction-set reference model and the random-program
+      verification: a program runner for the processor, a seeded random
+      program generator with functional-coverage goals, the comparison of
+      twelve thousand random programs against the model in all twelve
+      configurations, and the experiment that scores random testing against
+      the planted faults.
+\item \textbf{Mohan Kumar C R} (\texttt{mohan101mk}) -- \emph{Storage, control
+      and integration designer; FPGA implementation lead.} Phase~I:
+      designed the vector register file and scalar register, the instruction
+      decoder, and the complete single-cycle processor that joins all blocks
+      with the instruction and data memories, program counter, halt logic,
+      performance counters and debug port; also recorded the prototype video.
+      Phase~II: implemented the processor on a Lattice ECP5 FPGA with the
+      open-source flow, designed the measurement wrapper, measured logic,
+      memory, DSP use and maximum frequency for one, four and eight lanes,
+      analysed the critical path, and derived the time speedup; also
+      integrated the final report, with result tables generated directly from
+      the evidence, and wrote the abstract, introduction and conclusion.
+\item \textbf{Anushka Tyagi} (\texttt{anu-ushka}) -- \emph{Verification
+      engineer and scaling-study lead.} Phase~I: built the complete
+      module-level verification suite: the shared testbench infrastructure, the
+      independent ALU reference model and nine self-checking testbenches,
+      including exhaustive tests of the lane ALU and decoder, lane-isolation
+      tests and a whole-processor test against an instruction-set model.
+      Phase~II: carried out the scaling study, synthesising the design for
+      one, four and eight lanes and analysing how the cost of every block grows
+      with the lane count; re-ran the full verification matrix and the
+      planted-fault campaign on the final design, and wrote the functional
+      verification and hardware-cost results.
+\item \textbf{Omkar Hadole} (\texttt{omkar-hadole}) -- \emph{Build,
+      documentation and software-tools lead.} Phase~I: set up the project
+      structure and the build and simulation flow, produced the first synthesis
+      report, wrote the project documentation, and wrote the Phase~I report text
+      and references. Phase~II: developed the assembler, which translates
+      assembly programs into memory images, places data lane by lane, reports
+      errors by line, disassembles machine code and is tested on every
+      possible instruction word; rewrote the example programs in assembly
+      and updated the user documentation for the new tools.
+\item \textbf{Saksham Sharma} (\texttt{Saksham-9898}) -- \emph{Figures, review
+      and performance-evaluation lead.} Phase~I: drew the report figures
+      (scalar versus SIMD execution, the colour-coded datapath, instruction
+      formats, verification flow and the team map), reviewed the README,
+      report and repository for consistency, and wrote the runnable example
+      programs with their demo check. Phase~II: ran the scalar-versus-SIMD
+      evaluation: four benchmark kernels (array addition, threshold counting,
+      bitwise masking and scale-and-offset) generated for one, four and eight
+      lanes and checked against expected results, the reference model and the
+      predicted cycle counts; analysed the speedup, including the
+      fixed-overhead and cross-lane reduction limits, and produced the speedup
+      chart and the performance results.
 \end{itemize}
+
+% -----------------------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+This work delivers a parameterised SIMD vector processing unit in
+synthesisable Verilog, together with the tools to program, verify and measure
+it. The design passes \ModuleChecks{} module-level checks, exhaustive tests of
+the lane ALU and decoder, and \RandPrograms{} random programs compared with an
+independent instruction-set model in all \MatrixConfigs{} configurations;
+module tests and random programs together expose every planted fault that
+can affect behaviour. Because the scalar baseline is the same RTL with one lane,
+the comparison isolates the effect of datapath width. Eight lanes need up to
+\SpeedupThreeEight$\times$ fewer cycles, logic grows almost in proportion to
+the lane count, and the clock drops by \ClockLossEight\%. The net result is a
+\EffOneEight$\times$ faster array addition on an ECP5 FPGA. Speedup is limited by fixed
+setup instructions and by the missing cross-lane reduction.
+
+Natural extensions are a pipelined datapath, which would separate the memory
+read from the ALU and raise the clock; branch instructions for loops;
+a horizontal-add instruction for reductions; and synchronous memory reads, so
+the data memory can use block RAM.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
